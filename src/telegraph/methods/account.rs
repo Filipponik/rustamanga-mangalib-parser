@@ -1,10 +1,6 @@
 use crate::telegraph::methods::FieldToChange;
 
-pub async fn create(
-    short_name: &str,
-    author_name: Option<&str>,
-    author_url: Option<&str>
-) {
+pub async fn create(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) {
     todo!();
 }
 
@@ -18,15 +14,10 @@ pub async fn edit(
     todo!();
 }
 
-pub async fn get(
-    access_token: &str,
-    fields: Vec<FieldToChange>
-) {
+pub async fn get(access_token: &str, fields: Vec<FieldToChange>) {
     todo!();
 }
 
-pub async fn revoke_token(
-    access_token: &str,
-) {
+pub async fn revoke_token(access_token: &str) {
     todo!();
 }

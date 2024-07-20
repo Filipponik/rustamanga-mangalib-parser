@@ -1,6 +1,6 @@
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fmt::Display;
-use serde_json::{json, Value};
 
 #[derive(Debug)]
 enum Tag {
@@ -28,7 +28,7 @@ enum Tag {
     Strong,
     U,
     Ul,
-    Video
+    Video,
 }
 
 impl Display for Tag {
@@ -59,7 +59,8 @@ impl Display for Tag {
             Tag::U => "u",
             Tag::Ul => "ul",
             Tag::Video => "video",
-        }.to_string();
+        }
+        .to_string();
 
         write!(f, "{}", str)
     }
@@ -99,7 +100,7 @@ impl NodeElementAttribute {
 pub struct NodeElement {
     tag: Tag,
     attributes: NodeElementAttribute,
-    children: Vec<NodeElement>
+    children: Vec<NodeElement>,
 }
 
 impl NodeElement {
@@ -109,7 +110,8 @@ impl NodeElement {
             _ => {
                 let tag = format!("{}", &self.tag);
                 let attrs = self.attributes.to_hashmap();
-                let children: Vec<Value> = self.children.iter().map(|value| value.to_json()).collect();
+                let children: Vec<Value> =
+                    self.children.iter().map(|value| value.to_json()).collect();
                 json!({
                     "tag": tag,
                     "attrs": attrs,
@@ -123,7 +125,10 @@ impl NodeElement {
 pub fn a(href: &'static str, children: Vec<NodeElement>) -> NodeElement {
     NodeElement {
         tag: Tag::A,
-        attributes: NodeElementAttribute { href: Some(href.to_string()), src: None},
+        attributes: NodeElementAttribute {
+            href: Some(href.to_string()),
+            src: None,
+        },
         children,
     }
 }

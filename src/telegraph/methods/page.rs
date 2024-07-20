@@ -23,18 +23,11 @@ pub async fn edit(
     todo!()
 }
 
-pub async fn get(
-    path: &str,
-    return_content: bool,
-) {
+pub async fn get(path: &str, return_content: bool) {
     todo!()
 }
 
-pub async fn get_list(
-    access_token: &str,
-    offset: u64,
-    limit: u8,
-) {
+pub async fn get_list(access_token: &str, offset: u64, limit: u8) {
     todo!()
 }
 

@@ -1,2 +1,2 @@
-pub mod types;
 mod methods;
+pub mod types;
