@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 use crate::telegraph::types::NodeElement;
 
 pub async fn create(
@@ -5,7 +7,7 @@ pub async fn create(
     title: &str,
     author_name: Option<&str>,
     author_url: Option<&str>,
-    content: &Vec<NodeElement>,
+    content: &[NodeElement],
     return_content: bool,
 ) {
     todo!()
@@ -17,7 +19,7 @@ pub async fn edit(
     title: &str,
     author_name: Option<&str>,
     author_url: Option<&str>,
-    content: &Vec<NodeElement>,
+    content: &[NodeElement],
     return_content: bool,
 ) {
     todo!()

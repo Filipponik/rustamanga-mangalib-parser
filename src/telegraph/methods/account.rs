@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 use crate::telegraph::methods::FieldToChange;
 
 pub async fn create(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) {

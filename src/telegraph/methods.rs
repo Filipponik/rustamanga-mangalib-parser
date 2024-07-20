@@ -43,7 +43,7 @@ pub async fn create_page(
     title: &str,
     author_name: Option<&str>,
     author_url: Option<&str>,
-    content: &Vec<NodeElement>,
+    content: &[NodeElement],
     return_content: bool,
 ) {
     page::create(
@@ -63,7 +63,7 @@ pub async fn edit_page(
     title: &str,
     author_name: Option<&str>,
     author_url: Option<&str>,
-    content: &Vec<NodeElement>,
+    content: &[NodeElement],
     return_content: bool,
 ) {
     page::edit(
