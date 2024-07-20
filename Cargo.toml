@@ -2,6 +2,12 @@
 name = "telegraph"
 version = "0.0.1"
 edition = "2021"
+authors = ["Filipponik"]
+description = "Telegra.ph API"
+readme = "README.md"
+repository = "https://github.com/Filipponik/telegraph"
+keywords = ["axum-rs", "server", "web-server", "telegram", "telegraph"]
+categories = ["web-programming", "web-programming::http-server", "command-line-interface", "api-bindings"]
 
 [dependencies]
 serde = "1.0.204"
