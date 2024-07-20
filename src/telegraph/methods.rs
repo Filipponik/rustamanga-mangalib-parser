@@ -1,6 +1,6 @@
+use crate::telegraph::types::NodeElement;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::telegraph::types::NodeElement;
 
 mod account;
 mod page;
@@ -19,7 +19,7 @@ pub struct Page {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PageResult {
     ok: bool,
-    result: Page
+    result: Page,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -41,11 +41,12 @@ impl ErrorResult {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum Error {
     RequestInternalError,
     JsonParseError,
     StructParseError,
-    BadResponse(ErrorResult)
+    BadResponse(ErrorResult),
 }
 
 pub async fn create_account(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) {
@@ -84,14 +85,7 @@ pub async fn create_page(
     author_url: Option<&str>,
     content: &[NodeElement],
 ) -> Result<PageResult, Error> {
-    page::create(
-        access_token,
-        title,
-        author_name,
-        author_url,
-        content,
-    )
-    .await
+    page::create(access_token, title, author_name, author_url, content).await
 }
 
 pub async fn edit_page(

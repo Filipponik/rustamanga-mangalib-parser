@@ -1,24 +1,18 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use std::future::Future;
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Map, Value};
 use crate::telegraph::methods::{Error, ErrorResult, PageResult};
 use crate::telegraph::types::NodeElement;
+use serde_json::{json, Value};
 
-
-pub fn is_ok(value: &Value) -> Result<bool, Error>
-{
+pub fn is_ok(value: &Value) -> Result<bool, Error> {
     return match value {
-        Value::Object(object) => {
-            match object.get("ok") {
-                Some(Value::Bool(ok_value)) => Ok(*ok_value),
-                _ => Err(Error::StructParseError),
-            }
+        Value::Object(object) => match object.get("ok") {
+            Some(Value::Bool(ok_value)) => Ok(*ok_value),
+            _ => Err(Error::StructParseError),
         },
-        _ => Err(Error::StructParseError)
-    }
+        _ => Err(Error::StructParseError),
+    };
 }
 
 pub async fn create(
@@ -30,7 +24,8 @@ pub async fn create(
 ) -> Result<PageResult, Error> {
     let json_content: Vec<Value> = content.iter().map(|x| x.to_json()).collect();
     let client = reqwest::Client::new();
-    let response: Value = client.post("https://api.telegra.ph/createPage")
+    let response: Value = client
+        .post("https://api.telegra.ph/createPage")
         .json(&json!({
             "access_token": access_token,
             "author_name": author_name,
@@ -48,14 +43,14 @@ pub async fn create(
 
     match is_ok(&response)? {
         true => {
-            let result: PageResult = serde_json::from_value(response)
-                .map_err(|x| Error::StructParseError)?;
+            let result: PageResult =
+                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
 
             Ok(result)
-        },
+        }
         false => {
-            let result: ErrorResult = serde_json::from_value(response)
-                .map_err(|x| Error::StructParseError)?;
+            let result: ErrorResult =
+                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
 
             Err(Error::BadResponse(result))
         }
