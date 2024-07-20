@@ -1,12 +1,51 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use crate::telegraph::types::NodeElement;
 
 mod account;
 mod page;
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Page {
+    path: String,
+    url: String,
+    title: String,
+    description: String,
+    content: Option<Value>,
+    views: u128,
+    can_edit: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PageResult {
+    ok: bool,
+    result: Page
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum FieldToChange {
     ShortName,
     AuthorName,
     AuthorUrl,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorResult {
+    pub error: String,
+}
+
+impl ErrorResult {
+    pub fn new(error: String) -> Self {
+        ErrorResult { error }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Error {
+    RequestInternalError,
+    JsonParseError,
+    StructParseError,
+    BadResponse(ErrorResult)
 }
 
 pub async fn create_account(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) {
@@ -44,15 +83,13 @@ pub async fn create_page(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-    return_content: bool,
-) {
+) -> Result<PageResult, Error> {
     page::create(
         access_token,
         title,
         author_name,
         author_url,
         content,
-        return_content,
     )
     .await
 }

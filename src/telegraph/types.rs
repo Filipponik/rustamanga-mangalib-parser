@@ -122,7 +122,7 @@ impl NodeElement {
     }
 }
 
-pub fn a(href: &'static str, children: Vec<NodeElement>) -> NodeElement {
+pub fn a(href: &str, children: Vec<NodeElement>) -> NodeElement {
     NodeElement {
         tag: Tag::A,
         attributes: NodeElementAttribute {
@@ -261,26 +261,26 @@ pub fn aside(children: Vec<NodeElement>) -> NodeElement {
     }
 }
 
-pub fn iframe(src: String) -> NodeElement {
+pub fn iframe(src: &str) -> NodeElement {
     NodeElement {
         tag: Tag::IFrame,
-        attributes: NodeElementAttribute::new(None, Some(src)),
+        attributes: NodeElementAttribute::new(None, Some(src.to_string())),
         children: Default::default(),
     }
 }
 
-pub fn img(src: String) -> NodeElement {
+pub fn img(src: &str) -> NodeElement {
     NodeElement {
         tag: Tag::Img,
-        attributes: NodeElementAttribute::new(None, Some(src)),
+        attributes: NodeElementAttribute::new(None, Some(src.to_string())),
         children: Default::default(),
     }
 }
 
-pub fn video(src: String) -> NodeElement {
+pub fn video(src: &str) -> NodeElement {
     NodeElement {
         tag: Tag::Video,
-        attributes: NodeElementAttribute::new(None, Some(src)),
+        attributes: NodeElementAttribute::new(None, Some(src.to_string())),
         children: Default::default(),
     }
 }
@@ -315,7 +315,7 @@ pub fn hr() -> NodeElement {
     }
 }
 
-pub fn text(text: &'static str) -> NodeElement {
+pub fn text(text: &str) -> NodeElement {
     NodeElement {
         tag: Tag::Text(text.to_string()),
         ..Default::default()
