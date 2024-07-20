@@ -29,7 +29,7 @@ pub async fn create(
         .json(&json!({
             "access_token": access_token,
             "author_name": author_name,
-            // "title": title,
+            "title": title,
             "author_url": author_url,
             "content": json_content,
             "return_content": true,
