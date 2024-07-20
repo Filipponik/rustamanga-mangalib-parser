@@ -1,3 +1,3 @@
 #![allow(dead_code)]
-mod methods;
+pub mod methods;
 pub mod types;
