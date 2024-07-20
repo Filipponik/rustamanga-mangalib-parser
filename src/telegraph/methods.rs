@@ -7,19 +7,19 @@ mod page;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
-    path: String,
-    url: String,
-    title: String,
-    description: String,
-    content: Option<Value>,
-    views: u128,
-    can_edit: bool,
+    pub path: String,
+    pub url: String,
+    pub title: String,
+    pub description: String,
+    pub content: Option<Value>,
+    pub views: u128,
+    pub can_edit: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PageResult {
     ok: bool,
-    result: Page,
+    pub result: Page,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
