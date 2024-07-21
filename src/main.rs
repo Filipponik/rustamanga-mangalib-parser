@@ -1,4 +1,7 @@
-mod node_types;
+mod telegraph;
+mod mangalib;
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Ok(())
 }
