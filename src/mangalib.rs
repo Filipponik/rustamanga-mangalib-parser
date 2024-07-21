@@ -53,7 +53,7 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
     tab.set_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36", Some("en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6"), Some("macOS")).unwrap();
     tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
 
-    tab.wait_for_elements(".media-card")
+    Ok(tab.wait_for_elements(".media-card")
         .unwrap()
         .iter()
         .map(|element| {
@@ -65,5 +65,5 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
                 image_url: element.get_attribute_value("data-src").unwrap().unwrap(),
             }
         })
-        .collect()
+        .collect())
 }
