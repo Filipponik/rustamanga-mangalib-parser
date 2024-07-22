@@ -4,6 +4,9 @@ use headless_chrome::Browser;
 use headless_chrome::protocol::cdp::Page;
 
 const URL: &str = "https://mangalib.org";
+const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
+const ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6";
+const PLATFORM: &str = "macOS";
 
 fn get_url() -> String {
     URL.to_string()
@@ -14,7 +17,7 @@ pub async fn get_manga_chapter_images(slug: &str, volume: i32, chapter: &str) ->
     let tab = browser.new_tab().unwrap();
     let web_url = format!("{}/{slug}/v{volume}/c{chapter}?page=1", get_url());
     println!("going to {web_url}");
-    tab.set_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36", Some("en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6"), Some("macOS")).unwrap();
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).unwrap();
     tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
     let reader_element = tab.wait_for_element(".reader-view").unwrap();
     let pages_count = tab.wait_for_element("#reader-pages:last-child :last-child").unwrap().get_attribute_value("value").unwrap().unwrap().parse::<i32>().unwrap();
@@ -56,7 +59,7 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
     println!("going to {web_url}");
-    tab.set_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36", Some("en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6"), Some("macOS")).unwrap();
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).unwrap();
     tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
 
     Ok(tab.wait_for_elements(".media-card")
