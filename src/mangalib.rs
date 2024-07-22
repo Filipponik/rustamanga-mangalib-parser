@@ -3,10 +3,16 @@ use std::error::Error;
 use headless_chrome::Browser;
 use headless_chrome::protocol::cdp::Page;
 
+const URL: &str = "https://mangalib.org";
+
+fn get_url() -> String {
+    URL.to_string()
+}
+
 pub async fn get_manga_chapter_images(slug: &str, volume: i32, chapter: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
-    let web_url = format!("https://mangalib.me/{slug}/v{volume}/c{chapter}?page=1");
+    let web_url = format!("{}/{slug}/v{volume}/c{chapter}?page=1", get_url());
     println!("going to {web_url}");
     tab.set_user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36", Some("en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6"), Some("macOS")).unwrap();
     tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
@@ -46,7 +52,7 @@ pub struct MangaPreview {
 }
 
 pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<dyn Error>> {
-    let web_url = &format!("https://mangalib.me/manga-list?sort=rate&dir=desc&page=1&name={search_input}");
+    let web_url = &format!("{}/manga-list?sort=rate&dir=desc&page=1&name={search_input}", get_url());
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
     println!("going to {web_url}");
@@ -56,6 +62,7 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
     Ok(tab.wait_for_elements(".media-card")
         .unwrap()
         .iter()
+        .take(3)
         .map(|element| {
              MangaPreview {
                 manga_type: element.find_element(".media-card__subtitle").unwrap().get_inner_text().unwrap(),
