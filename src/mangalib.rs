@@ -1,7 +1,6 @@
 use std::error::Error;
 
 use headless_chrome::Browser;
-use headless_chrome::protocol::cdp::Page;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
@@ -14,10 +13,10 @@ fn get_url() -> String {
     URL.to_string()
 }
 
-pub async fn get_manga_chapter_images(slug: &str, volume: i32, chapter: &str) -> Result<Vec<String>, Box<dyn Error>> {
+pub async fn get_manga_chapter_images_by_slider(slug: &str, manga_chapter: &MangaChapter) -> Result<Vec<String>, Box<dyn Error>> {
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
-    let web_url = format!("{}/{slug}/v{volume}/c{chapter}?page=1", get_url());
+    let web_url = format!("{}/{slug}/v{}/c{}?page=1", get_url(), manga_chapter.chapter_volume, manga_chapter.chapter_number);
     println!("going to {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).unwrap();
     tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
@@ -27,12 +26,6 @@ pub async fn get_manga_chapter_images(slug: &str, volume: i32, chapter: &str) ->
     let mut index = 0;
     loop {
         index += 1;
-        let jpeg_data = tab.capture_screenshot(
-            Page::CaptureScreenshotFormatOption::Jpeg,
-            None,
-            None,
-            true).unwrap();
-        std::fs::write(format!("screenshot{index}.jpeg"), jpeg_data).unwrap();
         let selector = &format!(".reader-view__wrap:not(.hidden)[data-p=\"{index}\"] img[src]");
         println!("finding for {selector}");
         let url = tab.wait_for_element(selector).unwrap().get_attribute_value("src").unwrap().unwrap();
@@ -45,6 +38,28 @@ pub async fn get_manga_chapter_images(slug: &str, volume: i32, chapter: &str) ->
     }
 
     Ok(urls)
+}
+
+pub async fn get_manga_chapter_images_by_js(slug: &str, manga_chapter: &MangaChapter) -> Result<Vec<String>, Box<dyn Error>> {
+    let browser = Browser::default().unwrap();
+    let tab = browser.new_tab().unwrap();
+    let web_url = format!("{}/{slug}/v{}/c{}?page=1", get_url(), manga_chapter.chapter_volume, manga_chapter.chapter_number);
+    println!("going to {web_url}");
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).unwrap();
+    tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
+    let reader_element = tab.wait_for_element(".reader-view").unwrap();
+    let js_obj = reader_element.call_js_fn(r#"
+        function f() {
+            return JSON.stringify(window.__pg.map(el => el.u).map(image => window.__info.servers[window.__info.img.server]+window.__info.img.url+image));
+        }
+    "#, vec![], false)?;
+
+    let res: Vec<String> = match js_obj.value.unwrap() {
+        Value::String(v) => serde_json::from_str(&v).unwrap(),
+        _ => panic!("shit happens!")
+    };
+
+    Ok(res)
 }
 
 #[derive(Debug)]
