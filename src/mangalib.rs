@@ -1,8 +1,9 @@
-use std::error::Error;
-
+#![allow(dead_code)]
+#![allow(unused_variables)]
 use headless_chrome::Browser;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use std::error::Error;
 
 const URL: &str = "https://mangalib.org";
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
@@ -117,7 +118,7 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
     println!("going to {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
         .unwrap();
-    tab.navigate_to(&web_url)
+    tab.navigate_to(web_url)
         .unwrap()
         .wait_until_navigated()
         .unwrap();
@@ -167,7 +168,7 @@ pub async fn get_manga_chapters(slug: &str) -> Result<(), Box<dyn Error>> {
     println!("going to {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
         .unwrap();
-    tab.navigate_to(&web_url)
+    tab.navigate_to(web_url)
         .unwrap()
         .wait_until_navigated()
         .unwrap();
