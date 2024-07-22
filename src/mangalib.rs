@@ -2,6 +2,8 @@ use std::error::Error;
 
 use headless_chrome::Browser;
 use headless_chrome::protocol::cdp::Page;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 
 const URL: &str = "https://mangalib.org";
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
@@ -76,4 +78,57 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
             }
         })
         .collect())
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MangaChapter {
+    #[serde(deserialize_with = "to_string")]
+    pub chapter_number: String,
+    #[serde(deserialize_with = "to_string")]
+    pub chapter_volume: String,
+}
+
+pub async fn get_manga_chapters(slug: &str) -> Result<(), Box<dyn Error>> {
+    let web_url = &format!("{}/{slug}?section=chapters", get_url());
+    let browser = Browser::default().unwrap();
+    let tab = browser.new_tab().unwrap();
+    println!("going to {web_url}");
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).unwrap();
+    tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
+    // tab.call_method();
+    let elem = tab.wait_for_element(".media-chapter__name.text-truncate a").unwrap();
+    let js_obj = elem.call_js_fn(r#"
+        function f() {
+            return JSON.stringify(window.__DATA__.chapters.list);
+        }
+    "#, vec![], false)?;
+
+    let res: Vec<MangaChapter> = match js_obj.value.unwrap() {
+        Value::String(v) => serde_json::from_str(&v).unwrap(),
+        _ => panic!("shit happens!")
+    };
+
+    println!("{res:#?}");
+
+    Ok(())
+}
+
+fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+    where
+        D: Deserializer<'de>,
+{
+    use serde::de::Unexpected;
+    use serde::de::Error;
+    use serde_json::Value;
+
+    let value = Value::deserialize(deserializer)?;
+
+    match value {
+        Value::Number(num) => Ok(num.to_string()),
+        Value::String(s) => Ok(s),
+        _ => Err(D::Error::invalid_type(
+            Unexpected::Other("non-number/string value"),
+            &"a number or string",
+        )),
+    }
 }
