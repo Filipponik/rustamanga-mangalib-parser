@@ -79,11 +79,13 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).unwrap();
     tab.navigate_to(&web_url).unwrap().wait_until_navigated().unwrap();
 
+    let start = std::time::Instant::now();
     Ok(tab.wait_for_elements(".media-card")
         .unwrap()
         .iter()
-        .take(3)
+        .take(5)
         .map(|element| {
+             println!("time iter: {:?}", start.elapsed());
              MangaPreview {
                 manga_type: element.find_element(".media-card__subtitle").unwrap().get_inner_text().unwrap(),
                 name: element.find_element(".media-card__title.line-clamp").unwrap().get_inner_text().unwrap(),
