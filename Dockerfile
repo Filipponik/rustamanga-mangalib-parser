@@ -8,7 +8,13 @@ RUN apk add \
     openssl \
     pkgconfig \
     libressl-dev \
-    upx
+    upx \
+    curl \
+    unzip \
+    xvfb \
+    libxi6 \
+    libgconf-2-4 \
+    fonts-liberation
 
 COPY src/ ./src
 COPY Cargo.lock Cargo.toml ./
