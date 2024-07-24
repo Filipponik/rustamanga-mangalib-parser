@@ -14,13 +14,13 @@ async fn main() -> () {
 }
 
 async fn get_manga_urls(slug: &'static str, telegraph_token: &'static str) -> Vec<String> {
-    let urls: Arc<Mutex<HashMap<MangaChapter, Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let chapter_urls_map: Arc<Mutex<HashMap<MangaChapter, Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut chapters = mangalib::get_manga_chapters(slug).await.unwrap();
     chapters.reverse();
     let mut threads = vec![];
 
     for chapter in chapters.clone() {
-        let urls = Arc::clone(&urls);
+        let urls = Arc::clone(&chapter_urls_map);
         let thread = thread::spawn(move || {
             let rt = Runtime::new().unwrap();
             let result = rt.block_on(mangalib::get_manga_chapter_images_by_js(&slug, &chapter)).unwrap();
@@ -35,24 +35,27 @@ async fn get_manga_urls(slug: &'static str, telegraph_token: &'static str) -> Ve
     for thread in threads {
         thread.join().unwrap();
     }
+    let chapter_urls_map = chapter_urls_map.lock().unwrap().clone();
 
-    let urls: HashMap<MangaChapter, Vec<String>> = urls.lock().unwrap().clone();
+    publish_manga(slug, &chapters, &chapter_urls_map, telegraph_token).await
+}
 
-    let mut urls1 = vec![];
+async fn publish_manga(slug: &'static str, chapters: &[MangaChapter], chapter_urls_map: &HashMap<MangaChapter, Vec<String>>, telegraph_token: &'static str) -> Vec<String> {
+    let mut telegraph_urls: Vec<String> = vec![];
     for chapter in chapters {
-        let pages = urls.get(&chapter).unwrap().iter().map(|x| img(x)).collect::<Vec<NodeElement>>();
-        let name = format!("{slug} v{}c{}", chapter.chapter_volume, chapter.chapter_number);
-        let url = telegraph::methods::create_page(
+        let pages_nodes: Vec<NodeElement> = chapter_urls_map.get(&chapter).unwrap().iter().map(|x| img(x)).collect::<Vec<NodeElement>>();
+        let telegraph_title: String = format!("{slug} v{}c{}", chapter.chapter_volume, chapter.chapter_number);
+        let telegraph_url: String = telegraph::methods::create_page(
             telegraph_token,
-            &name,
+            &telegraph_title,
             None,
             None,
-            &pages
+            &pages_nodes
         ).await.unwrap().result.url;
 
-        urls1.push(url);
+        telegraph_urls.push(telegraph_url);
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
 
-    urls1
+    telegraph_urls
 }
