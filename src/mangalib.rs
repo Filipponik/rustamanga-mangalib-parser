@@ -153,15 +153,21 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
         .collect())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct MangaChapter {
     #[serde(deserialize_with = "to_string")]
-    pub chapter_number: String,
-    #[serde(deserialize_with = "to_string")]
     pub chapter_volume: String,
+    #[serde(deserialize_with = "to_string")]
+    pub chapter_number: String,
 }
 
-pub async fn get_manga_chapters(slug: &str) -> Result<(), Box<dyn Error>> {
+impl MangaChapter {
+    pub fn new<T: Into<String>>(volume: T, number: T) -> Self {
+        MangaChapter { chapter_volume: volume.into(), chapter_number: number.into() }
+    }
+}
+
+pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Box<dyn Error>> {
     let web_url = &format!("{}/{slug}?section=chapters", get_url());
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
@@ -172,7 +178,6 @@ pub async fn get_manga_chapters(slug: &str) -> Result<(), Box<dyn Error>> {
         .unwrap()
         .wait_until_navigated()
         .unwrap();
-    // tab.call_method();
     let elem = tab
         .wait_for_element(".media-chapter__name.text-truncate a")
         .unwrap();
@@ -186,14 +191,10 @@ pub async fn get_manga_chapters(slug: &str) -> Result<(), Box<dyn Error>> {
         false,
     )?;
 
-    let res: Vec<MangaChapter> = match js_obj.value.unwrap() {
+    Ok(match js_obj.value.unwrap() {
         Value::String(v) => serde_json::from_str(&v).unwrap(),
         _ => panic!("shit happens!"),
-    };
-
-    println!("{res:#?}");
-
-    Ok(())
+    })
 }
 
 fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
@@ -209,7 +210,7 @@ where
     match value {
         Value::Number(num) => Ok(num.to_string()),
         Value::String(s) => Ok(s),
-        _ => Err(D::Error::invalid_type(
+        _ => Err(Error::invalid_type(
             Unexpected::Other("non-number/string value"),
             &"a number or string",
         )),
