@@ -96,7 +96,7 @@ pub async fn get_views(
     day: Option<u8>,
     hour: Option<u8>,
 ) -> Result<u128, Error> {
-    let response: Value = reqwest::get(format!("https://api.telegra.ph/createPage?path={path}"))
+    let response: Value = reqwest::get(format!("https://api.telegra.ph/getViews?path={path}"))
         .await
         .map_err(|err| Error::RequestInternalError)?
         .json()
