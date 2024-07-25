@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use serde::{Deserialize, Serialize};
-use crate::telegraph::methods::{Error, ErrorResult, Page};
+use crate::telegraph::methods::{Error, ErrorResult, ListPagesResult, Page};
 use crate::telegraph::types::NodeElement;
 use serde_json::{json, Value};
 
@@ -90,8 +90,34 @@ pub async fn get(path: &str) -> Result<Page, Error> {
     response_to_page(response)
 }
 
-pub async fn get_list(access_token: &str, offset: u64, limit: u8) {
-    todo!()
+#[derive(Serialize, Deserialize, Debug)]
+struct ListResult {
+    ok: bool,
+    result: ListPagesResult
+}
+
+pub async fn get_list(access_token: &str, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
+    let response: Value = reqwest::get(format!("https://api.telegra.ph/getPageList?access_token={access_token}&offset={offset}&limit={limit}"))
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
+
+    match is_ok(&response)? {
+        true => {
+            let result: ListResult =
+                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
+
+            Ok(result.result)
+        }
+        false => {
+            let result: ErrorResult =
+                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
+
+            Err(Error::BadResponse(result))
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -119,12 +145,12 @@ pub async fn get_views(
         .await
         .map_err(|err| Error::JsonParseError)?;
 
-    let result: ViewsResult = match is_ok(&response)? {
+    match is_ok(&response)? {
         true => {
             let result: ViewsResult =
                 serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
 
-            Ok(result)
+            Ok(result.result.views)
         }
         false => {
             let result: ErrorResult =
@@ -132,7 +158,5 @@ pub async fn get_views(
 
             Err(Error::BadResponse(result))
         }
-    }?;
-
-    Ok(result.result.views)
+    }
 }

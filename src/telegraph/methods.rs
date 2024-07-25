@@ -6,6 +6,12 @@ mod account;
 mod page;
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ListPagesResult {
+    pub total_count: u128,
+    pub pages: Vec<Page>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
     pub path: String,
     pub url: String,
@@ -105,7 +111,7 @@ pub async fn get_page(path: &str) -> Result<Page, Error> {
     page::get(path).await
 }
 
-pub async fn get_page_list(access_token: &str, offset: u64, limit: u8) {
+pub async fn get_page_list(access_token: &str, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
     page::get_list(access_token, offset, limit).await
 }
 
