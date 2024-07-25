@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use crate::telegraph::methods::{Error, ErrorResult, ListPagesResult, Page};
 use crate::telegraph::types::NodeElement;
@@ -23,11 +22,11 @@ pub struct PageResult {
     pub result: Page,
 }
 
-pub async fn create<T: Into<String> + Serialize>(
-    access_token: T,
-    title: T,
-    author_name: Option<T>,
-    author_url: Option<T>,
+pub async fn create(
+    access_token: &str,
+    title: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
     content: &[NodeElement],
 ) -> Result<Page, Error> {
     let json_content: Vec<Value> = content.iter().map(|x| x.to_json()).collect();
@@ -52,12 +51,12 @@ pub async fn create<T: Into<String> + Serialize>(
     response_to_page(response)
 }
 
-pub async fn edit<T: Into<String> + Serialize>(
-    access_token: T,
-    path: T,
-    title: Option<T>,
-    author_name: Option<T>,
-    author_url: Option<T>,
+pub async fn edit(
+    access_token: &str,
+    path: &str,
+    title: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
     content: &[NodeElement],
 ) {
     todo!()
@@ -80,7 +79,7 @@ fn response_to_page(response: Value) -> Result<Page, Error> {
     }
 }
 
-pub async fn get<T: Into<String> + Display>(path: T) -> Result<Page, Error> {
+pub async fn get(path: &str) -> Result<Page, Error> {
     let response: Value = reqwest::get(format!("https://api.telegra.ph/getPage?path={path}"))
         .await
         .map_err(|err| Error::RequestInternalError)?
@@ -97,7 +96,7 @@ struct ListResult {
     result: ListPagesResult
 }
 
-pub async fn get_list<T: Into<String> + Display>(access_token: T, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
+pub async fn get_list(access_token: &str, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
     let response: Value = reqwest::get(format!("https://api.telegra.ph/getPageList?access_token={access_token}&offset={offset}&limit={limit}"))
         .await
         .map_err(|err| Error::RequestInternalError)?
@@ -132,8 +131,8 @@ struct ViewsResult {
     result: Views,
 }
 
-pub async fn get_views<T: Into<String> + Display>(
-    path: T,
+pub async fn get_views(
+    path: &str,
     year: Option<u16>,
     month: Option<u8>,
     day: Option<u8>,

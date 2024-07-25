@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use crate::telegraph::types::NodeElement;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -79,22 +78,22 @@ pub async fn revoke_access_token(access_token: &str) {
     account::revoke_token(access_token).await
 }
 
-pub async fn create_page<T: Into<String> + Serialize>(
-    access_token: T,
-    title: T,
-    author_name: Option<T>,
-    author_url: Option<T>,
+pub async fn create_page(
+    access_token: &str,
+    title: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
     content: &[NodeElement],
 ) -> Result<Page, Error> {
     page::create(access_token, title, author_name, author_url, content).await
 }
 
-pub async fn edit_page<T: Into<String> + Serialize>(
-    access_token: T,
-    path: T,
-    title: Option<T>,
-    author_name: Option<T>,
-    author_url: Option<T>,
+pub async fn edit_page(
+    access_token: &str,
+    path: &str,
+    title: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
     content: &[NodeElement],
 ) {
     page::edit(
@@ -108,16 +107,16 @@ pub async fn edit_page<T: Into<String> + Serialize>(
     .await
 }
 
-pub async fn get_page<T: Into<String> + Display>(path: T) -> Result<Page, Error> {
+pub async fn get_page(path: &str) -> Result<Page, Error> {
     page::get(path).await
 }
 
-pub async fn get_page_list<T: Into<String> + Display>(access_token: T, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
+pub async fn get_page_list(access_token: &str, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
     page::get_list(access_token, offset, limit).await
 }
 
-pub async fn get_views<T: Into<String> + Display>(
-    path: T,
+pub async fn get_views(
+    path: &str,
     year: Option<u16>,
     month: Option<u8>,
     day: Option<u8>,
