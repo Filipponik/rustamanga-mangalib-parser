@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use serde::{Deserialize, Serialize};
-use crate::telegraph::methods::{Error, ErrorResult, Page, PageResult};
+use crate::telegraph::methods::{Error, ErrorResult, Page};
 use crate::telegraph::types::NodeElement;
 use serde_json::{json, Value};
 
@@ -14,6 +14,12 @@ pub fn is_ok(value: &Value) -> Result<bool, Error> {
         },
         _ => Err(Error::StructParseError),
     };
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PageResult {
+    ok: bool,
+    pub result: Page,
 }
 
 pub async fn create(
@@ -42,6 +48,21 @@ pub async fn create(
         .await
         .map_err(|err| Error::JsonParseError)?;
 
+    response_to_page(response)
+}
+
+pub async fn edit(
+    access_token: &str,
+    path: &str,
+    title: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
+    content: &[NodeElement],
+) {
+    todo!()
+}
+
+fn response_to_page(response: Value) -> Result<Page, Error> {
     match is_ok(&response)? {
         true => {
             let result: PageResult =
@@ -58,19 +79,15 @@ pub async fn create(
     }
 }
 
-pub async fn edit(
-    access_token: &str,
-    path: &str,
-    title: &str,
-    author_name: Option<&str>,
-    author_url: Option<&str>,
-    content: &[NodeElement],
-) {
-    todo!()
-}
+pub async fn get(path: &str) -> Result<Page, Error> {
+    let response: Value = reqwest::get(format!("https://api.telegra.ph/getPage?path={path}"))
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
 
-pub async fn get(path: &str) {
-    todo!()
+    response_to_page(response)
 }
 
 pub async fn get_list(access_token: &str, offset: u64, limit: u8) {

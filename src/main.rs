@@ -51,7 +51,7 @@ async fn publish_manga(slug: &'static str, chapters: &[MangaChapter], chapter_ur
             None,
             None,
             &pages_nodes
-        ).await.unwrap().result.url;
+        ).await.unwrap().url;
 
         telegraph_urls.push(telegraph_url);
         tokio::time::sleep(Duration::from_secs(2)).await;

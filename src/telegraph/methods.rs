@@ -17,12 +17,6 @@ pub struct Page {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PageResult {
-    ok: bool,
-    pub result: Page,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub enum FieldToChange {
     ShortName,
     AuthorName,
@@ -107,7 +101,7 @@ pub async fn edit_page(
     .await
 }
 
-pub async fn get_page(path: &str) {
+pub async fn get_page(path: &str) -> Result<Page, Error> {
     page::get(path).await
 }
 
