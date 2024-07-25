@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use serde::{Deserialize, Serialize};
-use crate::telegraph::methods::{Error, ErrorResult, PageResult};
+use crate::telegraph::methods::{Error, ErrorResult, Page, PageResult};
 use crate::telegraph::types::NodeElement;
 use serde_json::{json, Value};
 
@@ -22,7 +22,7 @@ pub async fn create(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-) -> Result<PageResult, Error> {
+) -> Result<Page, Error> {
     let json_content: Vec<Value> = content.iter().map(|x| x.to_json()).collect();
     let client = reqwest::Client::new();
     let response: Value = client
@@ -47,7 +47,7 @@ pub async fn create(
             let result: PageResult =
                 serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
 
-            Ok(result)
+            Ok(result.result)
         }
         false => {
             let result: ErrorResult =

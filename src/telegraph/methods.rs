@@ -84,7 +84,7 @@ pub async fn create_page(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-) -> Result<PageResult, Error> {
+) -> Result<Page, Error> {
     page::create(access_token, title, author_name, author_url, content).await
 }
 
