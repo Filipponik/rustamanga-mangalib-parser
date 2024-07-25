@@ -1,4 +1,4 @@
-use crate::telegraph::types::NodeElement;
+use crate::telegraph::types::{NodeElement, text};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -95,7 +95,7 @@ pub async fn edit_page(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-) {
+) -> Result<Page, Error> {
     page::edit(
         access_token,
         path,
@@ -104,7 +104,22 @@ pub async fn edit_page(
         author_url,
         content,
     )
-    .await
+        .await
+}
+
+pub async fn delete_page(
+    access_token: &str,
+    path: &str,
+) -> Result<Page, Error> {
+    page::edit(
+        access_token,
+        path,
+        "[DELETED]",
+        None,
+        None,
+        &[text("[DELETED]")],
+    )
+        .await
 }
 
 pub async fn get_page(path: &str) -> Result<Page, Error> {

@@ -58,8 +58,28 @@ pub async fn edit(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-) {
-    todo!()
+) -> Result<Page, Error> {
+    let json_content: Vec<Value> = content.iter().map(|x| x.to_json()).collect();
+    let client = reqwest::Client::new();
+    let response: Value = client
+        .post("https://api.telegra.ph/editPage")
+        .json(&json!({
+            "access_token": access_token,
+            "path": path,
+            "title": title,
+            "content": json_content,
+            "author_name": author_name,
+            "author_url": author_url,
+            "return_content": true,
+        }))
+        .send()
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
+
+    response_to_page(response)
 }
 
 fn response_to_page(response: Value) -> Result<Page, Error> {
