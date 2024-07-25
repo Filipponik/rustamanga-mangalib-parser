@@ -123,6 +123,6 @@ pub async fn get_views(
     month: Option<u8>,
     day: Option<u8>,
     hour: Option<u8>,
-) {
+) -> Result<u128, Error> {
     page::get_views(path, year, month, day, hour).await
 }

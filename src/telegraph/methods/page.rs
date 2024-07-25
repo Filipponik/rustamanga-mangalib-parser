@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use serde::{Deserialize, Serialize};
 use crate::telegraph::methods::{Error, ErrorResult, PageResult};
 use crate::telegraph::types::NodeElement;
 use serde_json::{json, Value};
@@ -77,12 +78,45 @@ pub async fn get_list(access_token: &str, offset: u64, limit: u8) {
     todo!()
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Views {
+    views: u128,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ViewsResult {
+    ok: bool,
+    result: Views,
+}
+
 pub async fn get_views(
     path: &str,
     year: Option<u16>,
     month: Option<u8>,
     day: Option<u8>,
     hour: Option<u8>,
-) {
-    todo!()
+) -> Result<u128, Error> {
+    let response: Value = reqwest::get(format!("https://api.telegra.ph/createPage?path={path}"))
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
+
+    let result: ViewsResult = match is_ok(&response)? {
+        true => {
+            let result: ViewsResult =
+                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
+
+            Ok(result)
+        }
+        false => {
+            let result: ErrorResult =
+                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
+
+            Err(Error::BadResponse(result))
+        }
+    }?;
+
+    Ok(result.result.views)
 }
