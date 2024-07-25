@@ -95,7 +95,6 @@ pub async fn edit_page(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-    return_content: bool,
 ) {
     page::edit(
         access_token,
@@ -104,13 +103,12 @@ pub async fn edit_page(
         author_name,
         author_url,
         content,
-        return_content,
     )
     .await
 }
 
-pub async fn get_page(path: &str, return_content: bool) {
-    page::get(path, return_content).await
+pub async fn get_page(path: &str) {
+    page::get(path).await
 }
 
 pub async fn get_page_list(access_token: &str, offset: u64, limit: u8) {

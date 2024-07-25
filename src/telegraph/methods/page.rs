@@ -65,12 +65,11 @@ pub async fn edit(
     author_name: Option<&str>,
     author_url: Option<&str>,
     content: &[NodeElement],
-    return_content: bool,
 ) {
     todo!()
 }
 
-pub async fn get(path: &str, return_content: bool) {
+pub async fn get(path: &str) {
     todo!()
 }
 
