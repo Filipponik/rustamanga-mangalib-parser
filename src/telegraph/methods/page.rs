@@ -84,18 +84,8 @@ pub async fn edit(
 
 fn response_to_page(response: Value) -> Result<Page, Error> {
     match is_ok(&response)? {
-        true => {
-            let result: PageResult =
-                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
-
-            Ok(result.result)
-        }
-        false => {
-            let result: ErrorResult =
-                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
-
-            Err(Error::BadResponse(result))
-        }
+        true => Ok(serde_json::from_value::<PageResult>(response).map_err(|x| Error::StructParseError)?.result),
+        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?))
     }
 }
 
@@ -125,18 +115,8 @@ pub async fn get_list(access_token: &str, offset: u64, limit: u8) -> Result<List
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => {
-            let result: ListResult =
-                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
-
-            Ok(result.result)
-        }
-        false => {
-            let result: ErrorResult =
-                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
-
-            Err(Error::BadResponse(result))
-        }
+        true => Ok(serde_json::from_value::<ListResult>(response).map_err(|x| Error::StructParseError)?.result),
+        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?))
     }
 }
 
@@ -166,17 +146,7 @@ pub async fn get_views(
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => {
-            let result: ViewsResult =
-                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
-
-            Ok(result.result.views)
-        }
-        false => {
-            let result: ErrorResult =
-                serde_json::from_value(response).map_err(|x| Error::StructParseError)?;
-
-            Err(Error::BadResponse(result))
-        }
+        true => Ok(serde_json::from_value::<ViewsResult>(response).map_err(|x| Error::StructParseError)?.result.views),
+        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?))
     }
 }
