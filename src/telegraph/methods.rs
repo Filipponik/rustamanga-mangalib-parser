@@ -1,6 +1,7 @@
 use crate::telegraph::types::{NodeElement, text};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use crate::telegraph::methods::account::Account;
 
 mod account;
 mod page;
@@ -49,7 +50,7 @@ pub enum Error {
     BadResponse(ErrorResult),
 }
 
-pub async fn create_account(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) {
+pub async fn create_account(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) -> Result<Account, Error> {
     account::create(short_name, author_name, author_url).await
 }
 
