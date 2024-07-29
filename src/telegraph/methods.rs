@@ -71,7 +71,7 @@ pub async fn edit_account_info(
     .await
 }
 
-pub async fn get_account_info(access_token: &str, fields: Vec<FieldToChange>) {
+pub async fn get_account_info(access_token: &str, fields: Vec<FieldToChange>) -> Result<Account, Error> {
     account::get(access_token, fields).await
 }
 

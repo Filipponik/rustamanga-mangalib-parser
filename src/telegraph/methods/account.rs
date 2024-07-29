@@ -64,8 +64,18 @@ pub async fn edit(
     todo!();
 }
 
-pub async fn get(access_token: &str, fields: Vec<FieldToChange>) {
-    todo!();
+pub async fn get(access_token: &str, fields: Vec<FieldToChange>) -> Result<Account, Error> {
+    let response: Value = reqwest::get("https://api.telegra.ph/createAccount")
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
+
+    match is_ok(&response)? {
+        true => Ok(serde_json::from_value::<AccountResult>(response).map_err(|x| Error::StructParseError)?.result),
+        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response)
+            .map_err(|x| Error::StructParseError)?)),
 }
 
 pub async fn revoke_token(access_token: &str) {
