@@ -56,24 +56,30 @@ async fn publish_manga(
             .iter()
             .map(|x| NodeElement::img(x))
             .collect::<Vec<NodeElement>>();
-        let telegraph_title: String = format!(
-            "{slug} v{}c{}",
-            chapter.chapter_volume, chapter.chapter_number
-        );
-        let telegraph_url: String = telegraph::methods::create_page(
-            telegraph_token,
-            &telegraph_title,
-            None,
-            None,
-            &pages_nodes,
-        )
-        .await
-        .unwrap()
-        .url;
 
-        telegraph_urls.push(telegraph_url);
+        telegraph_urls.push(publish_manga_chapter(slug, &pages_nodes, &chapter, telegraph_token).await);
         tokio::time::sleep(Duration::from_millis(1500)).await;
     }
 
     telegraph_urls
+}
+
+async fn publish_manga_chapter(
+    slug: &str,
+    pages_nodes: &[NodeElement],
+    chapter: &MangaChapter,
+    telegraph_token: &str
+) -> String {
+    let telegraph_title: String = format!(
+        "{slug} v{}c{}",
+        chapter.chapter_volume, chapter.chapter_number
+    );
+
+    telegraph::methods::create_page(
+        telegraph_token,
+        &telegraph_title,
+        None,
+        None,
+        &pages_nodes,
+    ).await.unwrap().url
 }
