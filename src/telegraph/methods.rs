@@ -1,7 +1,7 @@
-use crate::telegraph::types::{NodeElement, text};
+use crate::telegraph::types::NodeElement;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::telegraph::methods::account::Account;
+use crate::telegraph::methods::account::{Access, Account};
 
 mod account;
 mod page;
@@ -75,7 +75,7 @@ pub async fn get_account_info(access_token: &str, fields: Vec<FieldToChange>) ->
     account::get(access_token, fields).await
 }
 
-pub async fn revoke_access_token(access_token: &str) {
+pub async fn revoke_access_token(access_token: &str) -> Result<Access, Error> {
     account::revoke_token(access_token).await
 }
 
@@ -118,7 +118,7 @@ pub async fn delete_page(
         "[DELETED]",
         None,
         None,
-        &[text("[DELETED]")],
+        &[NodeElement::text("[DELETED]")],
     )
         .await
 }

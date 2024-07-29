@@ -16,6 +16,18 @@ pub struct Account {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+struct RevokeTokenResult {
+    ok: bool,
+    result: Access,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Access {
+    pub access_token: String,
+    pub auth_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct AccountResult {
     ok: bool,
     result: Account,
@@ -76,8 +88,26 @@ pub async fn get(access_token: &str, fields: Vec<FieldToChange>) -> Result<Accou
         true => Ok(serde_json::from_value::<AccountResult>(response).map_err(|x| Error::StructParseError)?.result),
         false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response)
             .map_err(|x| Error::StructParseError)?)),
+    }
 }
 
-pub async fn revoke_token(access_token: &str) {
-    todo!();
+pub async fn revoke_token(access_token: &str) -> Result<Access, Error> {
+    let client = reqwest::Client::new();
+    let response: Value = client
+        .post("https://api.telegra.ph/revokeAccessToken")
+        .json(&json!({
+            "access_token": access_token
+        }))
+        .send()
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
+
+    match is_ok(&response)? {
+        true => Ok(serde_json::from_value::<RevokeTokenResult>(response).map_err(|x| Error::StructParseError)?.result),
+        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response)
+            .map_err(|x| Error::StructParseError)?)),
+    }
 }
