@@ -4,7 +4,7 @@ use std::thread;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use mangalib::MangaChapter;
-use telegraph::types::{img, NodeElement};
+use telegraph::types::NodeElement;
 
 mod mangalib;
 mod telegraph;
@@ -43,7 +43,7 @@ async fn get_manga_urls(slug: &'static str, telegraph_token: &'static str) -> Ve
 async fn publish_manga(slug: &'static str, chapters: &[MangaChapter], chapter_urls_map: &HashMap<MangaChapter, Vec<String>>, telegraph_token: &'static str) -> Vec<String> {
     let mut telegraph_urls: Vec<String> = vec![];
     for chapter in chapters {
-        let pages_nodes: Vec<NodeElement> = chapter_urls_map.get(&chapter).unwrap().iter().map(|x| img(x)).collect::<Vec<NodeElement>>();
+        let pages_nodes: Vec<NodeElement> = chapter_urls_map.get(&chapter).unwrap().iter().map(|x| NodeElement::img(x)).collect::<Vec<NodeElement>>();
         let telegraph_title: String = format!("{slug} v{}c{}", chapter.chapter_volume, chapter.chapter_number);
         let telegraph_url: String = telegraph::methods::create_page(
             telegraph_token,

@@ -120,204 +120,204 @@ impl NodeElement {
             }
         }
     }
-}
 
-pub fn a(href: &str, children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::A,
-        attributes: NodeElementAttribute {
-            href: Some(href.to_string()),
-            src: None,
-        },
-        children,
+    pub fn a(href: &str, children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::A,
+            attributes: NodeElementAttribute {
+                href: Some(href.to_string()),
+                src: None,
+            },
+            children,
+        }
     }
-}
 
-pub fn b(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::B,
-        attributes: Default::default(),
-        children,
+    pub fn b(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::B,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn i(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::I,
-        attributes: Default::default(),
-        children,
+    pub fn i(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::I,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn u(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::U,
-        attributes: Default::default(),
-        children,
+    pub fn u(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::U,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn s(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::S,
-        attributes: Default::default(),
-        children,
+    pub fn s(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::S,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn p(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::P,
-        attributes: Default::default(),
-        children,
+    pub fn p(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::P,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn strong(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Strong,
-        attributes: Default::default(),
-        children,
+    pub fn strong(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Strong,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn h3(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::H3,
-        attributes: Default::default(),
-        children,
+    pub fn h3(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::H3,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn h4(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::H4,
-        attributes: Default::default(),
-        children,
+    pub fn h4(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::H4,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn pre(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Pre,
-        attributes: Default::default(),
-        children,
+    pub fn pre(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Pre,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn ol(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Ol,
-        attributes: Default::default(),
-        children,
+    pub fn ol(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Ol,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn li(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Ol,
-        attributes: Default::default(),
-        children,
+    pub fn li(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Ol,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn ul(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Ul,
-        attributes: Default::default(),
-        children,
+    pub fn ul(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Ul,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn code(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Code,
-        attributes: Default::default(),
-        children,
+    pub fn code(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Code,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn em(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Em,
-        attributes: Default::default(),
-        children,
+    pub fn em(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Em,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn blockquote(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Blockquote,
-        attributes: Default::default(),
-        children,
+    pub fn blockquote(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Blockquote,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn aside(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Aside,
-        attributes: Default::default(),
-        children,
+    pub fn aside(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Aside,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn iframe(src: &str) -> NodeElement {
-    NodeElement {
-        tag: Tag::IFrame,
-        attributes: NodeElementAttribute::new(None, Some(src.to_string())),
-        children: Default::default(),
+    pub fn iframe(src: &str) -> Self {
+        NodeElement {
+            tag: Tag::IFrame,
+            attributes: NodeElementAttribute::new(None, Some(src.to_string())),
+            children: Default::default(),
+        }
     }
-}
 
-pub fn img(src: &str) -> NodeElement {
-    NodeElement {
-        tag: Tag::Img,
-        attributes: NodeElementAttribute::new(None, Some(src.to_string())),
-        children: Default::default(),
+    pub fn img(src: &str) -> Self {
+        NodeElement {
+            tag: Tag::Img,
+            attributes: NodeElementAttribute::new(None, Some(src.to_string())),
+            children: Default::default(),
+        }
     }
-}
 
-pub fn video(src: &str) -> NodeElement {
-    NodeElement {
-        tag: Tag::Video,
-        attributes: NodeElementAttribute::new(None, Some(src.to_string())),
-        children: Default::default(),
+    pub fn video(src: &str) -> Self {
+        NodeElement {
+            tag: Tag::Video,
+            attributes: NodeElementAttribute::new(None, Some(src.to_string())),
+            children: Default::default(),
+        }
     }
-}
 
-pub fn figure(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::Figure,
-        attributes: Default::default(),
-        children,
+    pub fn figure(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::Figure,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn figcaption(children: Vec<NodeElement>) -> NodeElement {
-    NodeElement {
-        tag: Tag::FigCaption,
-        attributes: Default::default(),
-        children,
+    pub fn figcaption(children: Vec<NodeElement>) -> Self {
+        NodeElement {
+            tag: Tag::FigCaption,
+            attributes: Default::default(),
+            children,
+        }
     }
-}
 
-pub fn br() -> NodeElement {
-    NodeElement {
-        tag: Tag::Br,
-        ..Default::default()
+    pub fn br() -> Self {
+        NodeElement {
+            tag: Tag::Br,
+            ..Default::default()
+        }
     }
-}
 
-pub fn hr() -> NodeElement {
-    NodeElement {
-        tag: Tag::Br,
-        ..Default::default()
+    pub fn hr() -> Self {
+        NodeElement {
+            tag: Tag::Br,
+            ..Default::default()
+        }
     }
-}
 
-pub fn text(text: &str) -> NodeElement {
-    NodeElement {
-        tag: Tag::Text(text.to_string()),
-        ..Default::default()
+    pub fn text(text: &str) -> Self {
+        NodeElement {
+            tag: Tag::Text(text.to_string()),
+            ..Default::default()
+        }
     }
 }
