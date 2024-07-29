@@ -23,7 +23,7 @@ async fn get_manga_urls(slug: &'static str, telegraph_token: &'static str) -> Ve
         let urls = Arc::clone(&chapter_urls_map);
         let thread = thread::spawn(move || {
             let rt = Runtime::new().unwrap();
-            let result = rt.block_on(mangalib::get_manga_chapter_images_by_js(&slug, &chapter)).unwrap();
+            let result = rt.block_on(mangalib::get_manga_chapter_images(&slug, &chapter)).unwrap();
 
             let mut urls = urls.lock().unwrap();
             urls.insert(chapter.clone(), result);
@@ -54,7 +54,7 @@ async fn publish_manga(slug: &'static str, chapters: &[MangaChapter], chapter_ur
         ).await.unwrap().url;
 
         telegraph_urls.push(telegraph_url);
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
     }
 
     telegraph_urls
