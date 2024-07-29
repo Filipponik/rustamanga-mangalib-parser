@@ -73,10 +73,9 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
         .unwrap();
 
     let start = std::time::Instant::now();
-    tab
-        .wait_for_element(".media-card")
-        .unwrap();
-    let func_result = tab.evaluate(r#"
+    tab.wait_for_element(".media-card").unwrap();
+    let func_result = tab.evaluate(
+        r#"
         JSON.stringify(Array.from(document.querySelectorAll('.media-card')).map(function (el) {
             let subinfo = el.querySelector('.media-card__caption');
             return {
@@ -87,7 +86,9 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
                 image_url: el.dataset.src,
             }
         }))
-    "#, false)?;
+    "#,
+        false,
+    )?;
 
     Ok(match func_result.value.unwrap() {
         Value::String(v) => serde_json::from_str(&v).unwrap(),
@@ -105,7 +106,10 @@ pub struct MangaChapter {
 
 impl MangaChapter {
     pub fn new<T: Into<String>>(volume: T, number: T) -> Self {
-        MangaChapter { chapter_volume: volume.into(), chapter_number: number.into() }
+        MangaChapter {
+            chapter_volume: volume.into(),
+            chapter_number: number.into(),
+        }
     }
 }
 

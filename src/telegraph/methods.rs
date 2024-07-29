@@ -1,7 +1,7 @@
+use crate::telegraph::methods::account::{Access, Account};
 use crate::telegraph::types::NodeElement;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::telegraph::methods::account::{Access, Account};
 
 mod account;
 mod page;
@@ -50,7 +50,11 @@ pub enum Error {
     BadResponse(ErrorResult),
 }
 
-pub async fn create_account(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) -> Result<Account, Error> {
+pub async fn create_account(
+    short_name: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
+) -> Result<Account, Error> {
     account::create(short_name, author_name, author_url).await
 }
 
@@ -71,7 +75,10 @@ pub async fn edit_account_info(
     .await
 }
 
-pub async fn get_account_info(access_token: &str, fields: Vec<FieldToChange>) -> Result<Account, Error> {
+pub async fn get_account_info(
+    access_token: &str,
+    fields: Vec<FieldToChange>,
+) -> Result<Account, Error> {
     account::get(access_token, fields).await
 }
 
@@ -97,21 +104,10 @@ pub async fn edit_page(
     author_url: Option<&str>,
     content: &[NodeElement],
 ) -> Result<Page, Error> {
-    page::edit(
-        access_token,
-        path,
-        title,
-        author_name,
-        author_url,
-        content,
-    )
-        .await
+    page::edit(access_token, path, title, author_name, author_url, content).await
 }
 
-pub async fn delete_page(
-    access_token: &str,
-    path: &str,
-) -> Result<Page, Error> {
+pub async fn delete_page(access_token: &str, path: &str) -> Result<Page, Error> {
     page::edit(
         access_token,
         path,
@@ -120,14 +116,18 @@ pub async fn delete_page(
         None,
         &[NodeElement::text("[DELETED]")],
     )
-        .await
+    .await
 }
 
 pub async fn get_page(path: &str) -> Result<Page, Error> {
     page::get(path).await
 }
 
-pub async fn get_page_list(access_token: &str, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
+pub async fn get_page_list(
+    access_token: &str,
+    offset: u64,
+    limit: u8,
+) -> Result<ListPagesResult, Error> {
     page::get_list(access_token, offset, limit).await
 }
 

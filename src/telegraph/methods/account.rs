@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::telegraph::methods::{Error, ErrorResult, FieldToChange};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::telegraph::methods::{Error, ErrorResult, FieldToChange};
-use crate::telegraph::methods::page::PageResult;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Account {
@@ -43,7 +42,11 @@ pub fn is_ok(value: &Value) -> Result<bool, Error> {
     };
 }
 
-pub async fn create(short_name: &str, author_name: Option<&str>, author_url: Option<&str>) -> Result<Account, Error> {
+pub async fn create(
+    short_name: &str,
+    author_name: Option<&str>,
+    author_url: Option<&str>,
+) -> Result<Account, Error> {
     let client = reqwest::Client::new();
     let response: Value = client
         .post("https://api.telegra.ph/createAccount")
@@ -60,9 +63,12 @@ pub async fn create(short_name: &str, author_name: Option<&str>, author_url: Opt
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => Ok(serde_json::from_value::<AccountResult>(response).map_err(|x| Error::StructParseError)?.result),
-        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response)
-            .map_err(|x| Error::StructParseError)?)),
+        true => Ok(serde_json::from_value::<AccountResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
     }
 }
 
@@ -85,9 +91,12 @@ pub async fn get(access_token: &str, fields: Vec<FieldToChange>) -> Result<Accou
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => Ok(serde_json::from_value::<AccountResult>(response).map_err(|x| Error::StructParseError)?.result),
-        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response)
-            .map_err(|x| Error::StructParseError)?)),
+        true => Ok(serde_json::from_value::<AccountResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
     }
 }
 
@@ -106,8 +115,11 @@ pub async fn revoke_token(access_token: &str) -> Result<Access, Error> {
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => Ok(serde_json::from_value::<RevokeTokenResult>(response).map_err(|x| Error::StructParseError)?.result),
-        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response)
-            .map_err(|x| Error::StructParseError)?)),
+        true => Ok(serde_json::from_value::<RevokeTokenResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
     }
 }

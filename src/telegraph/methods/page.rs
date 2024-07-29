@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use serde::{Deserialize, Serialize};
 use crate::telegraph::methods::{Error, ErrorResult, ListPagesResult, Page};
 use crate::telegraph::types::NodeElement;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 pub fn is_ok(value: &Value) -> Result<bool, Error> {
@@ -84,8 +84,12 @@ pub async fn edit(
 
 fn response_to_page(response: Value) -> Result<Page, Error> {
     match is_ok(&response)? {
-        true => Ok(serde_json::from_value::<PageResult>(response).map_err(|x| Error::StructParseError)?.result),
-        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?))
+        true => Ok(serde_json::from_value::<PageResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
     }
 }
 
@@ -103,10 +107,14 @@ pub async fn get(path: &str) -> Result<Page, Error> {
 #[derive(Serialize, Deserialize, Debug)]
 struct ListResult {
     ok: bool,
-    result: ListPagesResult
+    result: ListPagesResult,
 }
 
-pub async fn get_list(access_token: &str, offset: u64, limit: u8) -> Result<ListPagesResult, Error> {
+pub async fn get_list(
+    access_token: &str,
+    offset: u64,
+    limit: u8,
+) -> Result<ListPagesResult, Error> {
     let response: Value = reqwest::get(format!("https://api.telegra.ph/getPageList?access_token={access_token}&offset={offset}&limit={limit}"))
         .await
         .map_err(|err| Error::RequestInternalError)?
@@ -115,8 +123,12 @@ pub async fn get_list(access_token: &str, offset: u64, limit: u8) -> Result<List
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => Ok(serde_json::from_value::<ListResult>(response).map_err(|x| Error::StructParseError)?.result),
-        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?))
+        true => Ok(serde_json::from_value::<ListResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
     }
 }
 
@@ -146,7 +158,12 @@ pub async fn get_views(
         .map_err(|err| Error::JsonParseError)?;
 
     match is_ok(&response)? {
-        true => Ok(serde_json::from_value::<ViewsResult>(response).map_err(|x| Error::StructParseError)?.result.views),
-        false => Err(Error::BadResponse(serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?))
+        true => Ok(serde_json::from_value::<ViewsResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result
+            .views),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
     }
 }
