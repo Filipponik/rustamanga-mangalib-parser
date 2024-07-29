@@ -14,58 +14,7 @@ fn get_url() -> String {
     URL.to_string()
 }
 
-pub async fn get_manga_chapter_images_by_slider(
-    slug: &str,
-    manga_chapter: &MangaChapter,
-) -> Result<Vec<String>, Box<dyn Error>> {
-    let browser = Browser::default().unwrap();
-    let tab = browser.new_tab().unwrap();
-    let web_url = format!(
-        "{}/{slug}/v{}/c{}?page=1",
-        get_url(),
-        manga_chapter.chapter_volume,
-        manga_chapter.chapter_number
-    );
-    println!("going to {web_url}");
-    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
-        .unwrap();
-    tab.navigate_to(&web_url)
-        .unwrap()
-        .wait_until_navigated()
-        .unwrap();
-    let reader_element = tab.wait_for_element(".reader-view").unwrap();
-    let pages_count = tab
-        .wait_for_element("#reader-pages:last-child :last-child")
-        .unwrap()
-        .get_attribute_value("value")
-        .unwrap()
-        .unwrap()
-        .parse::<i32>()
-        .unwrap();
-    let mut urls: Vec<String> = vec![];
-    let mut index = 0;
-    loop {
-        index += 1;
-        let selector = &format!(".reader-view__wrap:not(.hidden)[data-p=\"{index}\"] img[src]");
-        println!("finding for {selector}");
-        let url = tab
-            .wait_for_element(selector)
-            .unwrap()
-            .get_attribute_value("src")
-            .unwrap()
-            .unwrap();
-        println!("{url}");
-        reader_element.click().unwrap();
-        urls.push(url);
-        if index == pages_count {
-            break;
-        }
-    }
-
-    Ok(urls)
-}
-
-pub async fn get_manga_chapter_images_by_js(
+pub async fn get_manga_chapter_images(
     slug: &str,
     manga_chapter: &MangaChapter,
 ) -> Result<Vec<String>, Box<dyn Error>> {
@@ -99,7 +48,7 @@ pub async fn get_manga_chapter_images_by_js(
     Ok(res)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MangaPreview {
     manga_type: String,
     name: String,
@@ -124,33 +73,26 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
         .unwrap();
 
     let start = std::time::Instant::now();
-    Ok(tab
-        .wait_for_elements(".media-card")
-        .unwrap()
-        .iter()
-        .take(5)
-        .map(|element| {
-            println!("time iter: {:?}", start.elapsed());
-            MangaPreview {
-                manga_type: element
-                    .find_element(".media-card__subtitle")
-                    .unwrap()
-                    .get_inner_text()
-                    .unwrap(),
-                name: element
-                    .find_element(".media-card__title.line-clamp")
-                    .unwrap()
-                    .get_inner_text()
-                    .unwrap(),
-                url: element.get_attribute_value("href").unwrap().unwrap(),
-                slug: element
-                    .get_attribute_value("data-media-slug")
-                    .unwrap()
-                    .unwrap(),
-                image_url: element.get_attribute_value("data-src").unwrap().unwrap(),
+    tab
+        .wait_for_element(".media-card")
+        .unwrap();
+    let func_result = tab.evaluate(r#"
+        JSON.stringify(Array.from(document.querySelectorAll('.media-card')).map(function (el) {
+            let subinfo = el.querySelector('.media-card__caption');
+            return {
+                manga_type: subinfo.querySelector('h5.media-card__subtitle').innerText,
+                name: subinfo.querySelector('h3.media-card__title').innerText,
+                url: el.href,
+                slug: el.dataset.mediaSlug,
+                image_url: el.dataset.src,
             }
-        })
-        .collect())
+        }))
+    "#, false)?;
+
+    Ok(match func_result.value.unwrap() {
+        Value::String(v) => serde_json::from_str(&v).unwrap(),
+        _ => panic!("shit happens!"),
+    })
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
