@@ -12,7 +12,7 @@ mod telegraph;
 #[tokio::main]
 async fn main() {}
 
-async fn get_manga_urls(slug: &'static str, telegraph_token: &'static str) -> Vec<String> {
+async fn get_manga_urls(slug: &str, telegraph_token: &str) -> Vec<String> {
     let chapter_urls_map: Arc<Mutex<HashMap<MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let mut chapters = mangalib::get_manga_chapters(slug).await.unwrap();
@@ -43,10 +43,10 @@ async fn get_manga_urls(slug: &'static str, telegraph_token: &'static str) -> Ve
 }
 
 async fn publish_manga(
-    slug: &'static str,
+    slug: &str,
     chapters: &[MangaChapter],
     chapter_urls_map: &HashMap<MangaChapter, Vec<String>>,
-    telegraph_token: &'static str,
+    telegraph_token: &str,
 ) -> Vec<String> {
     let mut telegraph_urls: Vec<String> = vec![];
     for chapter in chapters {
