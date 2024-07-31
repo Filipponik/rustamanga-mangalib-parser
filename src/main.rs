@@ -21,10 +21,11 @@ async fn get_manga_urls(slug: &str, telegraph_token: &str) -> Vec<String> {
 
     for chapter in chapters.clone() {
         let urls = Arc::clone(&chapter_urls_map);
+        let slug = slug.to_string();
         let thread = thread::spawn(move || {
             let rt = Runtime::new().unwrap();
             let result = rt
-                .block_on(mangalib::get_manga_chapter_images(slug, &chapter))
+                .block_on(mangalib::get_manga_chapter_images(&slug, &chapter))
                 .unwrap();
 
             let mut urls = urls.lock().unwrap();
