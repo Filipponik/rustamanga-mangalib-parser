@@ -64,7 +64,7 @@ pub async fn edit_account_info(
     short_name: &str,
     author_name: Option<&str>,
     author_url: Option<&str>,
-) {
+) -> Result<Account, Error> {
     account::edit(
         access_token,
         fields_to_change,

@@ -78,7 +78,7 @@ pub async fn edit(
     short_name: &str,
     author_name: Option<&str>,
     author_url: Option<&str>,
-) {
+) -> Result<Account, Error> {
     todo!();
 }
 
