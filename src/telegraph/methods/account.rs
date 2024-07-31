@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use std::collections::HashMap;
 use crate::telegraph::methods::{Error, ErrorResult, FieldToChange};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -79,7 +80,36 @@ pub async fn edit(
     author_name: Option<&str>,
     author_url: Option<&str>,
 ) -> Result<Account, Error> {
-    todo!();
+    let mut body: HashMap<String, Option<String>> = HashMap::from([
+        ("short_name".to_string(), Some(short_name.to_string())),
+        ("access_token".to_string(), Some(access_token.to_string()))
+    ]);
+    let client = reqwest::Client::new();
+    for field in fields_to_change {
+        match field {
+            FieldToChange::ShortName => body.insert("short_name".to_string(), Some(short_name.to_string())),
+            FieldToChange::AuthorName => body.insert("author_name".to_string(), author_name.map(|x| x.to_string())),
+            FieldToChange::AuthorUrl => body.insert("author_url".to_string(), author_url.map(|x| x.to_string())),
+        };
+    }
+    let response: Value = client
+        .post("https://api.telegra.ph/editAccountInfo")
+        .json(&serde_json::to_value(&body).unwrap())
+        .send()
+        .await
+        .map_err(|err| Error::RequestInternalError)?
+        .json()
+        .await
+        .map_err(|err| Error::JsonParseError)?;
+
+    match is_ok(&response)? {
+        true => Ok(serde_json::from_value::<AccountResult>(response)
+            .map_err(|x| Error::StructParseError)?
+            .result),
+        false => Err(Error::BadResponse(
+            serde_json::from_value::<ErrorResult>(response).map_err(|x| Error::StructParseError)?,
+        )),
+    }
 }
 
 pub async fn get(access_token: &str, fields: Vec<FieldToChange>) -> Result<Account, Error> {
