@@ -44,7 +44,7 @@ pub async fn get_manga_chapter_images(
         Value::String(v) => serde_json::from_str(&v).unwrap(),
         _ => panic!("shit happens!"),
     };
-
+    let _ = tab.close_target();
     Ok(res)
 }
 
