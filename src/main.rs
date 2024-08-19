@@ -2,8 +2,8 @@ use mangalib::MangaChapter;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::sync::Semaphore;
 use telegraph::types::NodeElement;
+use tokio::sync::Semaphore;
 
 mod mangalib;
 mod telegraph;
@@ -15,8 +15,7 @@ async fn main() {
         .enable_all()
         .build()
         .expect("Failed to create Tokio runtime");
-    rt.block_on(async {
-    });
+    rt.block_on(async {});
 }
 
 async fn get_manga_urls(slug: &str, telegraph_token: &str) -> Vec<String> {
@@ -64,7 +63,8 @@ async fn publish_manga(
             .map(|x| NodeElement::img(x))
             .collect::<Vec<NodeElement>>();
 
-        telegraph_urls.push(publish_manga_chapter(slug, &pages_nodes, &chapter, telegraph_token).await);
+        telegraph_urls
+            .push(publish_manga_chapter(slug, &pages_nodes, chapter, telegraph_token).await);
         tokio::time::sleep(Duration::from_millis(1200)).await;
     }
 
@@ -75,18 +75,15 @@ async fn publish_manga_chapter(
     slug: &str,
     pages_nodes: &[NodeElement],
     chapter: &MangaChapter,
-    telegraph_token: &str
+    telegraph_token: &str,
 ) -> String {
     let telegraph_title: String = format!(
         "{slug} v{}c{}",
         chapter.chapter_volume, chapter.chapter_number
     );
 
-    telegraph::methods::create_page(
-        telegraph_token,
-        &telegraph_title,
-        None,
-        None,
-        &pages_nodes,
-    ).await.unwrap().url
+    telegraph::methods::create_page(telegraph_token, &telegraph_title, None, None, pages_nodes)
+        .await
+        .unwrap()
+        .url
 }

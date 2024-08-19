@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use std::collections::HashMap;
 use crate::telegraph::methods::{Error, ErrorResult, FieldToChange};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Account {
@@ -82,14 +82,21 @@ pub async fn edit(
 ) -> Result<Account, Error> {
     let mut body: HashMap<String, Option<String>> = HashMap::from([
         ("short_name".to_string(), Some(short_name.to_string())),
-        ("access_token".to_string(), Some(access_token.to_string()))
+        ("access_token".to_string(), Some(access_token.to_string())),
     ]);
     let client = reqwest::Client::new();
     for field in fields_to_change {
         match field {
-            FieldToChange::ShortName => body.insert("short_name".to_string(), Some(short_name.to_string())),
-            FieldToChange::AuthorName => body.insert("author_name".to_string(), author_name.map(|x| x.to_string())),
-            FieldToChange::AuthorUrl => body.insert("author_url".to_string(), author_url.map(|x| x.to_string())),
+            FieldToChange::ShortName => {
+                body.insert("short_name".to_string(), Some(short_name.to_string()))
+            }
+            FieldToChange::AuthorName => body.insert(
+                "author_name".to_string(),
+                author_name.map(|x| x.to_string()),
+            ),
+            FieldToChange::AuthorUrl => {
+                body.insert("author_url".to_string(), author_url.map(|x| x.to_string()))
+            }
         };
     }
     let response: Value = client
