@@ -2,6 +2,7 @@ use mangalib::MangaChapter;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use serde::{Deserialize, Serialize};
 use telegraph::types::NodeElement;
 use tokio::sync::Semaphore;
 
@@ -42,13 +43,13 @@ async fn get_manga_urls(slug: &str, telegraph_token: &str) -> PublishedManga {
     publish_manga(slug, &chapters, &chapter_urls_map, telegraph_token).await
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct PublishedManga {
     slug: String,
     chapters: Vec<PublishedMangaChapter>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct PublishedMangaChapter {
     url: String,
     chapter: String,
@@ -101,4 +102,16 @@ async fn publish_manga_chapter(
         .await
         .unwrap()
         .url
+}
+
+async fn send_info_about_manga(base_url: &str, manga: &PublishedManga) {
+    reqwest::Client::new()
+        .post(base_url)
+        .json(manga)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
 }
