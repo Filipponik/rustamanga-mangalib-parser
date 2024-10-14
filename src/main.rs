@@ -10,15 +10,9 @@ mod telegraph;
 
 #[tokio::main]
 async fn main() {
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(4)
-        .enable_all()
-        .build()
-        .expect("Failed to create Tokio runtime");
-    rt.block_on(async {});
 }
 
-async fn get_manga_urls(slug: &str, telegraph_token: &str) -> Vec<String> {
+async fn get_manga_urls(slug: &str, telegraph_token: &str) -> PublishedManga {
     let chapter_urls_map: Arc<Mutex<HashMap<MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let mut chapters = mangalib::get_manga_chapters(slug).await.unwrap();
@@ -48,27 +42,48 @@ async fn get_manga_urls(slug: &str, telegraph_token: &str) -> Vec<String> {
     publish_manga(slug, &chapters, &chapter_urls_map, telegraph_token).await
 }
 
+#[derive(Debug)]
+struct PublishedManga {
+    slug: String,
+    chapters: Vec<PublishedMangaChapter>,
+}
+
+#[derive(Debug)]
+struct PublishedMangaChapter {
+    url: String,
+    chapter: String,
+    volume: String,
+    images_urls: Vec<String>,
+}
+
 async fn publish_manga(
     slug: &str,
     chapters: &[MangaChapter],
     chapter_urls_map: &HashMap<MangaChapter, Vec<String>>,
     telegraph_token: &str,
-) -> Vec<String> {
-    let mut telegraph_urls: Vec<String> = vec![];
+) -> PublishedManga {
+    let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
     for chapter in chapters {
-        let pages_nodes: Vec<NodeElement> = chapter_urls_map
+        let url_images = chapter_urls_map
             .get(chapter)
-            .unwrap()
+            .unwrap();
+        let pages_nodes: Vec<NodeElement> = url_images
             .iter()
             .map(|x| NodeElement::img(x))
             .collect::<Vec<NodeElement>>();
 
+        let chapter_url = publish_manga_chapter(slug, &pages_nodes, chapter, telegraph_token).await;
         telegraph_urls
-            .push(publish_manga_chapter(slug, &pages_nodes, chapter, telegraph_token).await);
+            .push(PublishedMangaChapter {
+                url: chapter_url,
+                chapter: chapter.chapter_number.clone(),
+                volume: chapter.chapter_volume.clone(),
+                images_urls: url_images.clone(),
+            });
         tokio::time::sleep(Duration::from_millis(1200)).await;
     }
 
-    telegraph_urls
+    PublishedManga { slug: slug.to_string(), chapters: telegraph_urls }
 }
 
 async fn publish_manga_chapter(
