@@ -2,7 +2,12 @@ use mangalib::MangaChapter;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use axum::{Json, Router};
+use axum::http::StatusCode;
+use axum::routing::{post};
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use tokio::net::TcpListener;
 use telegraph::types::NodeElement;
 use tokio::sync::Semaphore;
 
@@ -11,6 +16,38 @@ mod telegraph;
 
 #[tokio::main]
 async fn main() {
+    let listener = TcpListener::bind("0.0.0.0:8081").await.unwrap();
+    let router: Router = Router::new()
+        .route("/scrap_manga", post(scrap_manga))
+        .route("/scrap_manga/", post(scrap_manga))
+        .fallback(handle_404);
+
+    axum::serve(listener, router).await.unwrap();
+}
+
+#[derive(Deserialize)]
+struct ScrapMangaRequest {
+    slug: String,
+    callback_base_url: String,
+}
+
+async fn scrap_manga(Json(payload): Json<ScrapMangaRequest>) -> (StatusCode, Json<Value>) {
+    tokio::spawn(async move {
+        let manga = get_manga_urls(&payload.slug, "token").await;
+        send_info_about_manga(&payload.callback_base_url, &manga).await;
+    });
+
+    (StatusCode::OK, Json(json!({
+        "success": true,
+        "message": "Manga was sent successfully"
+    })))
+}
+
+async fn handle_404() -> (StatusCode, Json<Value>) {
+    (StatusCode::NOT_FOUND, Json(json!({
+        "success": false,
+        "message": "Route not found"
+    })))
 }
 
 async fn get_manga_urls(slug: &str, telegraph_token: &str) -> PublishedManga {
