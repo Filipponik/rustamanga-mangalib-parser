@@ -28,13 +28,13 @@ async fn main() {
 #[derive(Deserialize)]
 struct ScrapMangaRequest {
     slug: String,
-    callback_base_url: String,
+    callback_url: String,
 }
 
 async fn scrap_manga(Json(payload): Json<ScrapMangaRequest>) -> (StatusCode, Json<Value>) {
     tokio::spawn(async move {
         let manga = get_manga_urls(&payload.slug, "token").await;
-        send_info_about_manga(&payload.callback_base_url, &manga).await;
+        send_info_about_manga(&payload.callback_url, &manga).await;
     });
 
     (StatusCode::OK, Json(json!({
@@ -141,9 +141,9 @@ async fn publish_manga_chapter(
         .url
 }
 
-async fn send_info_about_manga(base_url: &str, manga: &PublishedManga) {
+async fn send_info_about_manga(url: &str, manga: &PublishedManga) {
     reqwest::Client::new()
-        .post(base_url)
+        .post(url)
         .json(manga)
         .send()
         .await
