@@ -1,14 +1,14 @@
+use axum::http::StatusCode;
+use axum::routing::post;
+use axum::{Json, Router};
 use mangalib::MangaChapter;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use axum::{Json, Router};
-use axum::http::StatusCode;
-use axum::routing::{post};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use tokio::net::TcpListener;
 use telegraph::types::NodeElement;
+use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
 mod mangalib;
@@ -37,17 +37,23 @@ async fn scrap_manga(Json(payload): Json<ScrapMangaRequest>) -> (StatusCode, Jso
         send_info_about_manga(&payload.callback_url, &manga).await;
     });
 
-    (StatusCode::OK, Json(json!({
-        "success": true,
-        "message": "Manga was sent successfully"
-    })))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Manga was sent successfully"
+        })),
+    )
 }
 
 async fn handle_404() -> (StatusCode, Json<Value>) {
-    (StatusCode::NOT_FOUND, Json(json!({
-        "success": false,
-        "message": "Route not found"
-    })))
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!({
+            "success": false,
+            "message": "Route not found"
+        })),
+    )
 }
 
 async fn get_manga_urls(slug: &str, telegraph_token: &str) -> PublishedManga {
@@ -102,26 +108,26 @@ async fn publish_manga(
 ) -> PublishedManga {
     let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
     for chapter in chapters {
-        let url_images = chapter_urls_map
-            .get(chapter)
-            .unwrap();
+        let url_images = chapter_urls_map.get(chapter).unwrap();
         let pages_nodes: Vec<NodeElement> = url_images
             .iter()
             .map(|x| NodeElement::img(x))
             .collect::<Vec<NodeElement>>();
 
         let chapter_url = publish_manga_chapter(slug, &pages_nodes, chapter, telegraph_token).await;
-        telegraph_urls
-            .push(PublishedMangaChapter {
-                url: chapter_url,
-                chapter: chapter.chapter_number.clone(),
-                volume: chapter.chapter_volume.clone(),
-                images_urls: url_images.clone(),
-            });
+        telegraph_urls.push(PublishedMangaChapter {
+            url: chapter_url,
+            chapter: chapter.chapter_number.clone(),
+            volume: chapter.chapter_volume.clone(),
+            images_urls: url_images.clone(),
+        });
         tokio::time::sleep(Duration::from_millis(1200)).await;
     }
 
-    PublishedManga { slug: slug.to_string(), chapters: telegraph_urls }
+    PublishedManga {
+        slug: slug.to_string(),
+        chapters: telegraph_urls,
+    }
 }
 
 async fn publish_manga_chapter(
