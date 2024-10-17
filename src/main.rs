@@ -5,8 +5,10 @@ use mangalib::MangaChapter;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use axum::extract::State;
 use telegraph::types::NodeElement;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
@@ -14,12 +16,26 @@ use tokio::sync::Semaphore;
 mod mangalib;
 mod telegraph;
 
+#[derive(Clone)]
+struct AppState {
+    port: u16,
+    telegraph_token: String,
+}
+
 #[tokio::main]
 async fn main() {
-    let listener = TcpListener::bind("0.0.0.0:8081").await.unwrap();
+    dotenv::dotenv().ok();
+
+    let state = AppState {
+        port: env::var("APP_PORT").unwrap().parse::<u16>().unwrap(),
+        telegraph_token: env::var("TELEGRAPH_TOKEN").unwrap().trim().to_string(),
+    };
+
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", state.port.clone())).await.unwrap();
     let router: Router = Router::new()
         .route("/scrap_manga", post(scrap_manga))
         .route("/scrap_manga/", post(scrap_manga))
+        .with_state(state)
         .fallback(handle_404);
 
     axum::serve(listener, router).await.unwrap();
@@ -31,9 +47,12 @@ struct ScrapMangaRequest {
     callback_url: String,
 }
 
-async fn scrap_manga(Json(payload): Json<ScrapMangaRequest>) -> (StatusCode, Json<Value>) {
+async fn scrap_manga(
+    State(state): State<AppState>,
+    Json(payload): Json<ScrapMangaRequest>,
+) -> (StatusCode, Json<Value>) {
     tokio::spawn(async move {
-        let manga = get_manga_urls(&payload.slug, "token").await;
+        let manga = get_manga_urls(&payload.slug, &state.telegraph_token).await;
         send_info_about_manga(&payload.callback_url, &manga).await;
     });
 
