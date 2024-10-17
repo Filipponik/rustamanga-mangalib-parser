@@ -10,4 +10,4 @@ build:
 run:
   persistenceMount: /data
   containerPort: 8081
-  command: ./telegraph
+  command: ./telegraph1
