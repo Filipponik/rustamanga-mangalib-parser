@@ -124,9 +124,13 @@ pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Box<dyn
         .unwrap()
         .wait_until_navigated()
         .unwrap();
-    let elem = tab
-        .wait_for_element(".media-chapter__name.text-truncate a")
-        .unwrap();
+    let elem = tab.wait_for_element(".media-chapter__name.text-truncate a");
+    let elem = match elem {
+        Ok(value) => value,
+        Err(err) => {
+            panic!("{}\n{}", err, tab.get_content().unwrap())
+        }
+    };
     let js_obj = elem.call_js_fn(
         r#"
         function f() {
