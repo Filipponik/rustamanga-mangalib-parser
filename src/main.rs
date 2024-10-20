@@ -1,3 +1,5 @@
+use crate::telegraph::methods::{Error, Page};
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::post;
 use axum::{Json, Router};
@@ -8,7 +10,6 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use axum::extract::State;
 use telegraph::types::NodeElement;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
@@ -20,6 +21,24 @@ mod telegraph;
 struct AppState {
     port: u16,
     telegraph_token: String,
+    chrome_max_count: u16,
+}
+
+macro_rules! retry {
+    ($f:expr, $count:expr, $interval:expr) => {{
+        let mut tries = 0;
+        let result = loop {
+            let result = $f;
+            tries += 1;
+            if result.is_ok() || tries >= $count {
+                break result;
+            }
+        };
+        result
+    }};
+    ($f:expr) => {
+        retry!($f, 5, 100)
+    };
 }
 
 #[tokio::main]
@@ -29,15 +48,22 @@ async fn main() {
     let state = AppState {
         port: env::var("APP_PORT").unwrap().parse::<u16>().unwrap(),
         telegraph_token: env::var("TELEGRAPH_TOKEN").unwrap().trim().to_string(),
+        chrome_max_count: env::var("CHROME_MAX_COUNT")
+            .unwrap()
+            .parse::<u16>()
+            .unwrap(),
     };
-
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", state.port.clone())).await.unwrap();
+    let address = &format!("0.0.0.0:{}", state.port.clone());
+    let listener = TcpListener::bind(address).await.unwrap();
     let router: Router = Router::new()
-        .route("/scrap_manga", post(scrap_manga))
-        .route("/scrap_manga/", post(scrap_manga))
+        .route("/scrap-manga", post(scrap_manga))
+        .route("/scrap-manga/", post(scrap_manga))
+        .route("/save-article", post(save_article))
+        .route("/save-article/", post(save_article))
         .with_state(state)
         .fallback(handle_404);
 
+    println!("Web server is up: {address}");
     axum::serve(listener, router).await.unwrap();
 }
 
@@ -52,7 +78,12 @@ async fn scrap_manga(
     Json(payload): Json<ScrapMangaRequest>,
 ) -> (StatusCode, Json<Value>) {
     tokio::spawn(async move {
-        let manga = get_manga_urls(&payload.slug, &state.telegraph_token).await;
+        let manga = get_manga_urls(
+            &payload.slug,
+            &state.telegraph_token,
+            state.chrome_max_count,
+        )
+        .await;
         send_info_about_manga(&payload.callback_url, &manga).await;
     });
 
@@ -75,23 +106,24 @@ async fn handle_404() -> (StatusCode, Json<Value>) {
     )
 }
 
-async fn get_manga_urls(slug: &str, telegraph_token: &str) -> PublishedManga {
+async fn get_manga_urls(
+    slug: &str,
+    telegraph_token: &str,
+    chrome_max_count: u16,
+) -> PublishedManga {
     let chapter_urls_map: Arc<Mutex<HashMap<MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let mut chapters = mangalib::get_manga_chapters(slug).await.unwrap();
     chapters.reverse();
     let mut threads = vec![];
-    let semaphore = Arc::new(Semaphore::new(8));
+    let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
     for chapter in chapters.clone() {
         let urls = Arc::clone(&chapter_urls_map);
         let slug = slug.to_string();
         let semaphore = semaphore.clone();
         let thread = tokio::spawn(async move {
             let _permit = semaphore.acquire().await.unwrap();
-            let result = mangalib::get_manga_chapter_images(&slug, &chapter)
-                .await
-                .unwrap();
-
+            let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter).await).unwrap();
             let mut urls = urls.lock().unwrap();
             urls.insert(chapter.clone(), result);
         });
@@ -113,7 +145,7 @@ struct PublishedManga {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct PublishedMangaChapter {
-    url: String,
+    url: Option<String>,
     chapter: String,
     volume: String,
     images_urls: Vec<String>,
@@ -133,14 +165,14 @@ async fn publish_manga(
             .map(|x| NodeElement::img(x))
             .collect::<Vec<NodeElement>>();
 
-        let chapter_url = publish_manga_chapter(slug, &pages_nodes, chapter, telegraph_token).await;
+        // let chapter_url = publish_manga_chapter(slug, &pages_nodes, chapter, telegraph_token).await;
         telegraph_urls.push(PublishedMangaChapter {
-            url: chapter_url,
+            url: None,
             chapter: chapter.chapter_number.clone(),
             volume: chapter.chapter_volume.clone(),
             images_urls: url_images.clone(),
         });
-        tokio::time::sleep(Duration::from_millis(1200)).await;
+        tokio::time::sleep(Duration::from_millis(2000)).await;
     }
 
     PublishedManga {
@@ -160,10 +192,12 @@ async fn publish_manga_chapter(
         chapter.chapter_volume, chapter.chapter_number
     );
 
-    telegraph::methods::create_page(telegraph_token, &telegraph_title, None, None, pages_nodes)
-        .await
-        .unwrap()
-        .url
+    retry!(
+        telegraph::methods::create_page(telegraph_token, &telegraph_title, None, None, pages_nodes)
+            .await
+    )
+    .unwrap()
+    .url
 }
 
 async fn send_info_about_manga(url: &str, manga: &PublishedManga) {
@@ -176,4 +210,42 @@ async fn send_info_about_manga(url: &str, manga: &PublishedManga) {
         .text()
         .await
         .unwrap();
+}
+
+#[derive(Deserialize)]
+struct SaveArticleRequest {
+    title: String,
+    images: Vec<String>,
+}
+
+async fn save_article(
+    State(state): State<AppState>,
+    Json(payload): Json<SaveArticleRequest>,
+) -> (StatusCode, Json<Value>) {
+    let token = state.telegraph_token;
+    let title = payload.title;
+    let nodes = payload
+        .images
+        .iter()
+        .map(|x| NodeElement::img(x))
+        .collect::<Vec<NodeElement>>();
+
+    let result = retry!(telegraph::methods::create_page(&token, &title, None, None, &nodes).await);
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "url": value.url
+            })),
+        ),
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "success": false,
+                "message": format!("{err:?}")
+            })),
+        ),
+    }
 }
