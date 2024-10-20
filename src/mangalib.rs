@@ -18,8 +18,8 @@ pub async fn get_manga_chapter_images(
     slug: &str,
     manga_chapter: &MangaChapter,
 ) -> Result<Vec<String>, Box<dyn Error>> {
-    let browser = Browser::default().unwrap();
-    let tab = browser.new_tab().unwrap();
+    let browser = Browser::default()?;
+    let tab = browser.new_tab()?;
     let web_url = format!(
         "{}/{slug}/v{}/c{}?page=1",
         get_url(),
@@ -27,13 +27,9 @@ pub async fn get_manga_chapter_images(
         manga_chapter.chapter_number
     );
     println!("going to {web_url}");
-    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
-        .unwrap();
-    tab.navigate_to(&web_url)
-        .unwrap()
-        .wait_until_navigated()
-        .unwrap();
-    let reader_element = tab.wait_for_element(".reader-view").unwrap();
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))?;
+    tab.navigate_to(&web_url)?.wait_until_navigated()?;
+    let reader_element = tab.wait_for_element(".reader-view")?;
     let js_obj = reader_element.call_js_fn(r#"
         function f() {
             return JSON.stringify(window.__pg.map(el => el.u).map(image => window.__info.servers[window.__info.img.server]+window.__info.img.url+image));
@@ -41,7 +37,7 @@ pub async fn get_manga_chapter_images(
     "#, vec![], false)?;
 
     let res: Vec<String> = match js_obj.value.unwrap() {
-        Value::String(v) => serde_json::from_str(&v).unwrap(),
+        Value::String(v) => serde_json::from_str(&v)?,
         _ => panic!("shit happens!"),
     };
     let _ = tab.close_target();
