@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 use telegraph::types::NodeElement;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
+use tracing::{error, info};
 
 mod mangalib;
 mod telegraph;
@@ -23,7 +24,7 @@ struct AppState {
 }
 
 macro_rules! retry {
-    ($f:expr, $count:expr, $interval:expr) => {{
+    ($f:expr, $count:expr) => {{
         let mut tries = 0;
         let result = loop {
             let result = $f;
@@ -35,13 +36,25 @@ macro_rules! retry {
         result
     }};
     ($f:expr) => {
-        retry!($f, 5, 100)
+        retry!($f, 5)
     };
+}
+
+fn setup_tracing() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .with_target(false)
+        .with_env_filter("telegraph=debug")
+        .init();
 }
 
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
+    setup_tracing();
 
     let state = AppState {
         port: env::var("APP_PORT").unwrap().parse::<u16>().unwrap(),
@@ -61,7 +74,7 @@ async fn main() {
         .with_state(state)
         .fallback(handle_404);
 
-    println!("Web server is up: {address}");
+    info!("Web server is up: {address}");
     axum::serve(listener, router).await.unwrap();
 }
 
@@ -77,7 +90,12 @@ async fn scrap_manga(
 ) -> (StatusCode, Json<Value>) {
     tokio::spawn(async move {
         let manga = get_manga_urls(&payload.slug, state.chrome_max_count).await;
-        send_info_about_manga(&payload.callback_url, &manga).await;
+        info!("Sending manga to {}", payload.callback_url);
+        let response = send_info_about_manga(&payload.callback_url, &manga).await;
+        match response {
+            Ok(body) => info!("Successfully sent manga: {body}"),
+            Err(err) => error!("Error while sending manga: {err:?}")
+        }
     });
 
     (
@@ -162,16 +180,14 @@ async fn publish_manga(
     }
 }
 
-async fn send_info_about_manga(url: &str, manga: &PublishedManga) {
+async fn send_info_about_manga(url: &str, manga: &PublishedManga) -> reqwest::Result<String> {
     reqwest::Client::new()
         .post(url)
         .json(manga)
         .send()
-        .await
-        .unwrap()
+        .await?
         .text()
         .await
-        .unwrap();
 }
 
 #[derive(Deserialize)]
