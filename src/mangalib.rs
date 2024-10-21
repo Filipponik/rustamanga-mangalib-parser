@@ -114,7 +114,7 @@ pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Box<dyn
     let web_url = &format!("{}/{slug}?section=chapters", get_url());
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
-    debug!("Searching images at {web_url}");
+    debug!("Searching manga chapters at {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
         .unwrap();
     tab.navigate_to(web_url)
