@@ -1,4 +1,4 @@
-version=0.0.1
+version=0.0.2
 image=filipponik/telegraph
 platforms=linux/amd64,linux/arm64
 

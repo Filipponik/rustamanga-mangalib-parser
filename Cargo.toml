@@ -1,6 +1,6 @@
 [package]
 name = "telegraph"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["Filipponik"]
 description = "Telegra.ph API"
@@ -26,3 +26,5 @@ headless_chrome = {git = "https://github.com/rust-headless-chrome/rust-headless-
 futures = "0.3.30"
 axum = "0.7.5"
 lazy_static = "1.5.0"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

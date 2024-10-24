@@ -4,6 +4,7 @@ use headless_chrome::Browser;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::error::Error;
+use tracing::debug;
 
 const URL: &str = "https://mangalib.me";
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
@@ -26,7 +27,7 @@ pub async fn get_manga_chapter_images(
         manga_chapter.chapter_volume,
         manga_chapter.chapter_number
     );
-    println!("going to {web_url}");
+    debug!("Searching manga chapters at {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))?;
     tab.navigate_to(&web_url)?.wait_until_navigated()?;
     let reader_element = tab.wait_for_element(".reader-view")?;
@@ -60,7 +61,7 @@ pub async fn search_manga(search_input: &str) -> Result<Vec<MangaPreview>, Box<d
     );
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
-    println!("going to {web_url}");
+    debug!("Searching manga at {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
         .unwrap();
     tab.navigate_to(web_url)
@@ -113,7 +114,7 @@ pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Box<dyn
     let web_url = &format!("{}/{slug}?section=chapters", get_url());
     let browser = Browser::default().unwrap();
     let tab = browser.new_tab().unwrap();
-    println!("going to {web_url}");
+    debug!("Searching manga chapters at {web_url}");
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
         .unwrap();
     tab.navigate_to(web_url)
