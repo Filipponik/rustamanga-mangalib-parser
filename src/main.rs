@@ -6,7 +6,7 @@ use mangalib::MangaChapter;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::{env, thread};
+use std::env;
 use std::sync::{Arc, Mutex};
 use telegraph::types::NodeElement;
 use tokio::net::TcpListener;
@@ -128,7 +128,7 @@ async fn get_manga_urls(slug: &str, chrome_max_count: u16) -> PublishedManga {
         let urls = Arc::clone(&chapter_urls_map);
         let slug = slug.to_string();
         let semaphore = semaphore.clone();
-        let thread = thread::spawn(async move {
+        let thread = tokio::spawn(async move {
             let _permit = semaphore.acquire().await.unwrap();
             let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter).await).unwrap();
             let mut urls = urls.lock().unwrap();
