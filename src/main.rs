@@ -124,15 +124,13 @@ async fn get_manga_urls(slug: &str, chrome_max_count: u16) -> PublishedManga {
     chapters.reverse();
     let mut threads = vec![];
     let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
-    let runtime = tokio::runtime::Runtime::new().unwrap();
     for chapter in chapters.clone() {
         let urls = Arc::clone(&chapter_urls_map);
         let slug = slug.to_string();
         let semaphore = semaphore.clone();
-        let rt_handle = runtime.handle().clone();
-        let thread = thread::spawn(move || {
-            let _permit = rt_handle.block_on(semaphore.acquire()).unwrap();
-            let result = retry!(rt_handle.block_on(mangalib::get_manga_chapter_images(&slug, &chapter))).unwrap();
+        let thread = thread::spawn(async move {
+            let _permit = semaphore.acquire().await.unwrap();
+            let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter).await).unwrap();
             let mut urls = urls.lock().unwrap();
             urls.insert(chapter.clone(), result);
         });
@@ -140,9 +138,7 @@ async fn get_manga_urls(slug: &str, chrome_max_count: u16) -> PublishedManga {
         threads.push(thread);
     }
 
-    for thread in threads {
-        thread.join().unwrap();
-    }
+    futures::future::join_all(threads).await;
     let chapter_urls_map = chapter_urls_map.lock().unwrap().clone();
 
     publish_manga(slug, &chapters, &chapter_urls_map).await
