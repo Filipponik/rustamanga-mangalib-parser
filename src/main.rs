@@ -8,18 +8,15 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex};
-use telegraph::types::NodeElement;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 use tracing::{error, info};
 
 mod mangalib;
-mod telegraph;
 
 #[derive(Clone)]
 struct AppState {
     port: u16,
-    telegraph_token: String,
     chrome_max_count: u16,
 }
 
@@ -58,7 +55,6 @@ async fn main() {
 
     let state = AppState {
         port: env::var("APP_PORT").unwrap().parse::<u16>().unwrap(),
-        telegraph_token: env::var("TELEGRAPH_TOKEN").unwrap().trim().to_string(),
         chrome_max_count: env::var("CHROME_MAX_COUNT")
             .unwrap()
             .parse::<u16>()
@@ -69,8 +65,6 @@ async fn main() {
     let router: Router = Router::new()
         .route("/scrap-manga", post(scrap_manga))
         .route("/scrap-manga/", post(scrap_manga))
-        .route("/save-article", post(save_article))
-        .route("/save-article/", post(save_article))
         .with_state(state)
         .fallback(handle_404);
 
@@ -94,7 +88,7 @@ async fn scrap_manga(
         let response = send_info_about_manga(&payload.callback_url, &manga).await;
         match response {
             Ok(body) => info!("Successfully sent manga: {body}"),
-            Err(err) => error!("Error while sending manga: {err:?}")
+            Err(err) => error!("Error while sending manga: {err:?}"),
         }
     });
 
@@ -188,42 +182,4 @@ async fn send_info_about_manga(url: &str, manga: &PublishedManga) -> reqwest::Re
         .await?
         .text()
         .await
-}
-
-#[derive(Deserialize)]
-struct SaveArticleRequest {
-    title: String,
-    images: Vec<String>,
-}
-
-async fn save_article(
-    State(state): State<AppState>,
-    Json(payload): Json<SaveArticleRequest>,
-) -> (StatusCode, Json<Value>) {
-    let token = state.telegraph_token;
-    let title = payload.title;
-    let nodes = payload
-        .images
-        .iter()
-        .map(|x| NodeElement::img(x))
-        .collect::<Vec<NodeElement>>();
-
-    let result = retry!(telegraph::methods::create_page(&token, &title, None, None, &nodes).await);
-
-    match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(json!({
-                "success": true,
-                "url": value.url
-            })),
-        ),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({
-                "success": false,
-                "message": format!("{err:?}")
-            })),
-        ),
-    }
 }

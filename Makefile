@@ -1,5 +1,5 @@
-version=0.0.2
-image=filipponik/telegraph
+version=0.0.3
+image=filipponik/mangalib
 platforms=linux/amd64,linux/arm64
 
 # Build docker images
