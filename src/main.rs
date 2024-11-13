@@ -44,7 +44,7 @@ fn setup_tracing() {
         .with_line_number(true)
         .with_thread_ids(true)
         .with_target(false)
-        .with_env_filter("telegraph=debug")
+        .with_env_filter("mangalib=debug")
         .init();
 }
 
