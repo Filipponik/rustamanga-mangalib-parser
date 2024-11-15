@@ -1,12 +1,12 @@
 [package]
 name = "mangalib"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 authors = ["Filipponik"]
-description = "Telegra.ph API"
+description = "Mangalib scrapper"
 readme = "README.md"
 repository = "https://github.com/Filipponik/telegraph"
-keywords = ["axum-rs", "server", "web-server", "telegram", "telegraph"]
+keywords = ["axum-rs", "server", "web-server", "mangalib"]
 categories = ["web-programming", "web-programming::http-server", "command-line-interface", "api-bindings"]
 
 [profile.release]
