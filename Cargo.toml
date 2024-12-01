@@ -1,6 +1,6 @@
 [package]
 name = "mangalib"
-version = "0.0.3"
+version = "0.1.0"
 edition = "2021"
 authors = ["Filipponik"]
 description = "Mangalib scrapper"
@@ -25,6 +25,5 @@ dotenv = "0.15.0"
 headless_chrome = {git = "https://github.com/rust-headless-chrome/rust-headless-chrome", features = ["fetch"]}
 futures = "0.3.30"
 axum = "0.7.5"
-lazy_static = "1.5.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
