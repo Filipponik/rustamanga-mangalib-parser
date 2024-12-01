@@ -12,7 +12,7 @@ cargo build --release
 ## Usage
 
 ```shell
-cargo run --relese
+cargo run --release
 ```
 After this, your app will be available at http://localhost:{APP_PORT}
 
