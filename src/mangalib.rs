@@ -146,8 +146,24 @@ impl MangaChapter {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ChapterInner {
+    id: u128,
+    index: u128,
+    item_number: u128,
+    volume: String,
+    number: String,
+    number_secondary: String,
+    name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ChapterInnerList {
+    data: Vec<ChapterInner>
+}
+
 pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, MangalibError> {
-    let web_url = &format!("{}/{slug}?section=chapters", get_url());
+    let web_url = &format!("https://api.mangalib.me/api/manga/{slug}/chapters");
     let browser = Browser::default().map_err(|_| MangalibError::BrowserCreateError)?;
     let tab = browser.new_tab().map_err(|_| MangalibError::BrowserTabCreateError)?;
     debug!("Searching manga chapters at {web_url}");
@@ -158,41 +174,30 @@ pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Mangali
         .wait_until_navigated()
         .map_err(|_| MangalibError::BrowserWaitNavigateTooLong)?;
 
-    let elem = tab.wait_for_element(".media-chapter__name.text-truncate a");
-    let elem = match elem {
-        Ok(value) => value,
-        Err(err) => {
-            let content = match tab.get_content().map_err(|_| MangalibError::BrowserGetContentError) {
-                Ok(val) => val,
-                Err(err) => return Err(err),
+    let text = tab.wait_for_element("body > pre")
+        .map_err(|_| MangalibError::BrowserWaitElementTooLong)?
+        .get_inner_text()
+        .map_err(|_| MangalibError::BrowserGetContentError)?;
+
+    let chapter_inner_list: ChapterInnerList = serde_json::from_str(&text)
+        .map_err(|_| MangalibError::SerdeParseError)?;
+
+    let chapters = chapter_inner_list
+        .data
+        .iter()
+        .fold(Vec::new(), |mut acc, chapter_inner| {
+            let chapter = MangaChapter {
+                chapter_volume: chapter_inner.volume.to_string(),
+                chapter_number: chapter_inner.number.clone(),
             };
 
-            error!("Error waiting element too long {}\n{}", err, content);
+            acc.push(chapter);
+            acc
+        });
 
-            return Err(MangalibError::BrowserWaitElementTooLong);
-        }
-    };
-
-    let js_obj = elem.call_js_fn(
-        r#"
-        function f() {
-            return JSON.stringify(window.__DATA__.chapters.list);
-        }
-    "#,
-        vec![],
-        false,
-    ).map_err(|_| MangalibError::BrowserFunctionError)?;
-
-    let val = match js_obj.value {
-        Some(v) => v,
-        _ => return Err(MangalibError::BrowserFunctionError),
-    };
-    
-    Ok(match val {
-        Value::String(v) => serde_json::from_str(&v).map_err(|_| MangalibError::SerdeParseError)?,
-        _ => panic!("shit happens!"),
-    })
+    Ok(chapters)
 }
+
 
 fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
