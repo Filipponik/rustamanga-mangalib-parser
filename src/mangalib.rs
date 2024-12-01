@@ -2,8 +2,7 @@
 #![allow(unused_variables)]
 use headless_chrome::Browser;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
-use tracing::{debug, error};
+use tracing::debug;
 
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
 const ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6";
@@ -48,35 +47,42 @@ pub async fn get_manga_chapter_images(
     manga_chapter: &MangaChapter,
 ) -> Result<Vec<String>, MangalibError> {
     let browser = Browser::default().map_err(|_| MangalibError::BrowserCreateError)?;
-    let tab = browser.new_tab().map_err(|_| MangalibError::BrowserTabCreateError)?;
+    let tab = browser
+        .new_tab()
+        .map_err(|_| MangalibError::BrowserTabCreateError)?;
     let web_url = format!(
         "https://api.mangalib.me/api/manga/{slug}/chapter?number={}&volume={}",
-        manga_chapter.chapter_number,
-        manga_chapter.chapter_volume,
+        manga_chapter.chapter_number, manga_chapter.chapter_volume,
     );
 
     debug!("Searching manga chapters at {web_url}");
-    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).map_err(|_| MangalibError::SetUserAgentError)?;
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
+        .map_err(|_| MangalibError::SetUserAgentError)?;
     tab.navigate_to(&web_url)
         .map_err(|_| MangalibError::BrowserNavigateError)?
         .wait_until_navigated()
         .map_err(|_| MangalibError::BrowserWaitNavigateTooLong)?;
 
-    let text = tab.wait_for_element("body > pre")
+    let text = tab
+        .wait_for_element("body > pre")
         .map_err(|_| MangalibError::BrowserWaitElementTooLong)?
         .get_inner_text()
         .map_err(|_| MangalibError::BrowserGetContentError)?;
 
-    let chapter_inner_list: ImageInnerList = serde_json::from_str(&text)
-        .map_err(|_| MangalibError::SerdeParseError)?;
+    let chapter_inner_list: ImageInnerList =
+        serde_json::from_str(&text).map_err(|_| MangalibError::SerdeParseError)?;
 
-    let images = chapter_inner_list.data.pages.iter().fold(Vec::new(), |mut acc, item| {
-        let mut absolute_url = IMAGE_SERVER_PREFIX.to_string();
-        absolute_url.push_str(&item.url.clone());
-        acc.push(absolute_url);
+    let images = chapter_inner_list
+        .data
+        .pages
+        .iter()
+        .fold(Vec::new(), |mut acc, item| {
+            let mut absolute_url = IMAGE_SERVER_PREFIX.to_string();
+            absolute_url.push_str(&item.url.clone());
+            acc.push(absolute_url);
 
-        acc
-    });
+            acc
+        });
 
     Ok(images)
 }
@@ -126,22 +132,26 @@ struct ChapterInnerList {
 pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, MangalibError> {
     let web_url = &format!("https://api.mangalib.me/api/manga/{slug}/chapters");
     let browser = Browser::default().map_err(|_| MangalibError::BrowserCreateError)?;
-    let tab = browser.new_tab().map_err(|_| MangalibError::BrowserTabCreateError)?;
+    let tab = browser
+        .new_tab()
+        .map_err(|_| MangalibError::BrowserTabCreateError)?;
     debug!("Searching manga chapters at {web_url}");
 
-    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM)).map_err(|_| MangalibError::SetUserAgentError)?;
-    tab.navigate_to(&web_url)
+    tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
+        .map_err(|_| MangalibError::SetUserAgentError)?;
+    tab.navigate_to(web_url)
         .map_err(|_| MangalibError::BrowserNavigateError)?
         .wait_until_navigated()
         .map_err(|_| MangalibError::BrowserWaitNavigateTooLong)?;
 
-    let text = tab.wait_for_element("body > pre")
+    let text = tab
+        .wait_for_element("body > pre")
         .map_err(|_| MangalibError::BrowserWaitElementTooLong)?
         .get_inner_text()
         .map_err(|_| MangalibError::BrowserGetContentError)?;
 
-    let chapter_inner_list: ChapterInnerList = serde_json::from_str(&text)
-        .map_err(|_| MangalibError::SerdeParseError)?;
+    let chapter_inner_list: ChapterInnerList =
+        serde_json::from_str(&text).map_err(|_| MangalibError::SerdeParseError)?;
 
     let chapters = chapter_inner_list
         .data
@@ -158,7 +168,6 @@ pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Mangali
 
     Ok(chapters)
 }
-
 
 fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
