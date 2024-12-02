@@ -1,6 +1,6 @@
+mod config;
 mod mangalib;
 mod server;
-mod config;
 
 #[tokio::main]
 async fn main() {

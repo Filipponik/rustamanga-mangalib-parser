@@ -1,3 +1,4 @@
+use crate::mangalib;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::post;
@@ -10,7 +11,6 @@ use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 use tracing::{error, info};
-use crate::mangalib;
 
 #[derive(Clone)]
 struct AppState {
