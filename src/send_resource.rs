@@ -9,7 +9,7 @@ pub async fn send_resource(url: &str) {
     for res in resource_vec.into_iter() {
         let sending_result = Client::new()
             .post(url)
-            .body(res.to_string())
+            .json(&res)
             .send()
             .await;
 
