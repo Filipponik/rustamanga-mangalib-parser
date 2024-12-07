@@ -42,7 +42,6 @@ pub async fn get_manga_urls(slug: &str, chrome_max_count: u16) -> PublishedManga
     let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let mut chapters = mangalib::get_manga_chapters(slug).await.unwrap();
-    chapters.reverse();
     let mut threads = vec![];
     let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
     for chapter in chapters.clone() {
