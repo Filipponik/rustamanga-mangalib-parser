@@ -1,5 +1,6 @@
 use reqwest::{Client};
 use serde_json::Value;
+use tracing::{error, info};
 
 const MANGALIB_STATIC_RESOURCE: &str = include_str!("../resource/json/mangalib_manga_list.json");
 
@@ -15,10 +16,10 @@ pub async fn send_resource(url: &str) {
 
         match sending_result {
             Ok(_) => {
-                println!("Successfully sent")
+                info!("Successfully sent")
             }
             Err(err) => {
-                eprintln!("Failed to send resource: {}", err)
+                error!("Failed to send resource: {}", err)
             }
         }
     }
