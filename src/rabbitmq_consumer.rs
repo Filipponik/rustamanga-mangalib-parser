@@ -1,7 +1,10 @@
+use std::env;
 use futures::StreamExt;
 use lapin::{Connection, ConnectionProperties, ExchangeKind};
-use lapin::options::{BasicConsumeOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions};
+use lapin::options::{BasicAckOptions, BasicConsumeOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions};
 use lapin::types::FieldTable;
+use tracing::info;
+use crate::processing::process;
 
 pub async fn consume(url: &str) {
     let connect = Connection::connect(url, ConnectionProperties::default()).await.unwrap();
@@ -46,11 +49,19 @@ pub async fn consume(url: &str) {
         .await
         .unwrap();
 
-    println!("Waiting for jobs");
+    info!("Waiting for jobs");
+    let chrome_max_count = env::var("CHROME_MAX_COUNT")
+        .unwrap()
+        .parse::<u16>()
+        .unwrap();
 
     while let Some(delivery) = consumer.next().await {
         if let Ok(delivery) = delivery {
-            println!("Received {:?}", std::str::from_utf8(&delivery.data).unwrap_or("WTF I CANT DECODE!"));
+            let string_data = std::str::from_utf8(&delivery.data).unwrap();
+            info!("Received {}", string_data);
+            process(chrome_max_count, serde_json::from_str(string_data).unwrap()).await;
+
+            delivery.ack(BasicAckOptions::default()).await.unwrap();
         }
     }
 }
