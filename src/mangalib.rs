@@ -120,8 +120,8 @@ struct ChapterInner {
     item_number: u128,
     volume: String,
     number: String,
-    number_secondary: String,
-    name: String,
+    number_secondary: Option<String>,
+    name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
