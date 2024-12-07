@@ -1,16 +1,21 @@
-use std::env;
-use futures::StreamExt;
-use lapin::{Connection, ConnectionProperties, ExchangeKind};
-use lapin::options::{BasicAckOptions, BasicConsumeOptions, ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions};
-use lapin::types::FieldTable;
-use tracing::info;
 use crate::processing::process;
+use futures::StreamExt;
+use lapin::options::{
+    BasicAckOptions, BasicConsumeOptions, ExchangeDeclareOptions, QueueBindOptions,
+    QueueDeclareOptions,
+};
+use lapin::types::FieldTable;
+use lapin::{Connection, ConnectionProperties, ExchangeKind};
+use std::env;
+use tracing::info;
 
 pub async fn consume(url: &str) {
-    let connect = Connection::connect(url, ConnectionProperties::default()).await.unwrap();
+    let connect = Connection::connect(url, ConnectionProperties::default())
+        .await
+        .unwrap();
     let channel = connect.create_channel().await.unwrap();
 
-    let _exchange = channel
+    channel
         .exchange_declare(
             "manga_urls_exchange",
             ExchangeKind::Direct,
@@ -29,13 +34,14 @@ pub async fn consume(url: &str) {
         .await
         .unwrap();
 
-    channel.queue_bind(
-        queue.name().as_str(),
-        "manga_urls_exchange",
-        "",
-        QueueBindOptions::default(),
-        FieldTable::default(),
-    )
+    channel
+        .queue_bind(
+            queue.name().as_str(),
+            "manga_urls_exchange",
+            "",
+            QueueBindOptions::default(),
+            FieldTable::default(),
+        )
         .await
         .unwrap();
 

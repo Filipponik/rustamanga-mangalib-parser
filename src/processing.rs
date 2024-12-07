@@ -1,9 +1,9 @@
+use crate::mangalib;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use serde::{Deserialize, Serialize};
 use tokio::sync::Semaphore;
 use tracing::{error, info};
-use crate::mangalib;
 
 macro_rules! retry {
     ($f:expr, $count:expr) => {{

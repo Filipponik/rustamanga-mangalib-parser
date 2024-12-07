@@ -1,5 +1,5 @@
-use clap::{arg, Command};
 use crate::{rabbitmq_consumer, send_resource, server};
+use clap::{arg, Command};
 
 pub fn get_settings() -> Command {
     Command::new("mangalib")
@@ -8,8 +8,7 @@ pub fn get_settings() -> Command {
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
         .subcommands([
-            Command::new("serve")
-                .about("Start web server"),
+            Command::new("serve").about("Start web server"),
             Command::new("send-resource")
                 .about("Send start static resource")
                 .arg(arg!(--url <URL> "URL where we should send this resource"))
@@ -27,11 +26,11 @@ pub async fn process_commands() {
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
             send_resource(url).await
-        },
+        }
         Some(("consume", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
             consume(url).await
-        },
+        }
         Some(_) | None => panic!("No command specified"),
     }
 }

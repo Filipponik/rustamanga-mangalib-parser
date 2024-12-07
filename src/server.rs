@@ -1,17 +1,13 @@
+use crate::processing;
 use crate::processing::ScrapMangaRequest;
-use crate::{mangalib, processing};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::post;
 use axum::{Json, Router};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use std::env;
-use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
-use tokio::sync::Semaphore;
-use tracing::{error, info};
+use tracing::info;
 
 #[derive(Clone)]
 struct AppState {
@@ -43,7 +39,7 @@ async fn scrap_manga(
     State(state): State<AppState>,
     Json(payload): Json<ScrapMangaRequest>,
 ) -> (StatusCode, Json<Value>) {
-    tokio::spawn(async move { processing::process(state.chrome_max_count, payload) });
+    tokio::spawn(async move { processing::process(state.chrome_max_count, payload).await });
 
     (
         StatusCode::OK,

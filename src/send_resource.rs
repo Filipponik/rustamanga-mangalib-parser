@@ -1,4 +1,4 @@
-use reqwest::{Client};
+use reqwest::Client;
 use serde_json::Value;
 use tracing::{error, info};
 
@@ -8,11 +8,7 @@ pub async fn send_resource(url: &str) {
     let resource_vec: Vec<Value> = serde_json::from_str(MANGALIB_STATIC_RESOURCE).unwrap();
 
     for res in resource_vec.into_iter() {
-        let sending_result = Client::new()
-            .post(url)
-            .json(&res)
-            .send()
-            .await;
+        let sending_result = Client::new().post(url).json(&res).send().await;
 
         match sending_result {
             Ok(_) => {
@@ -24,4 +20,3 @@ pub async fn send_resource(url: &str) {
         }
     }
 }
-
