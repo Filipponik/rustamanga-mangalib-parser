@@ -39,6 +39,7 @@ struct ImageInner {
     height: u32,
     width: u32,
     url: String,
+    #[serde(deserialize_with = "to_string")]
     ratio: String,
 }
 
