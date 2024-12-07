@@ -48,7 +48,7 @@ pub async fn consume(url: &str) {
     let mut consumer = channel
         .basic_consume(
             queue.name().as_str(),
-            "manga_urls_consumer",
+            "",
             BasicConsumeOptions::default(),
             FieldTable::default(),
         )
