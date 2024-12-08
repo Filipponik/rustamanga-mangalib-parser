@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
-use headless_chrome::Browser;
+use headless_chrome::{Browser, LaunchOptions};
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::debug;
 
@@ -12,7 +12,8 @@ const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MangalibError {
     SerdeParseError,
-    BrowserCreateError,
+    BrowserCreateError(String),
+    BrowserCreateBuilderError(String),
     BrowserTabCreateError,
     BrowserNavigateError,
     SetUserAgentError,
@@ -43,11 +44,20 @@ struct ImageInner {
     ratio: String,
 }
 
+fn get_browser() -> Result<Browser, MangalibError> {
+    let options = LaunchOptions::default_builder()
+        .sandbox(false)
+        .build()
+        .map_err(|err| MangalibError::BrowserCreateBuilderError(err.to_string()))?;
+
+    Browser::new(options).map_err(|err| MangalibError::BrowserCreateError(err.to_string()))
+}
+
 pub async fn get_manga_chapter_images(
     slug: &str,
     manga_chapter: &MangaChapter,
 ) -> Result<Vec<String>, MangalibError> {
-    let browser = Browser::default().map_err(|_| MangalibError::BrowserCreateError)?;
+    let browser = get_browser()?;
     let tab = browser
         .new_tab()
         .map_err(|_| MangalibError::BrowserTabCreateError)?;
@@ -132,7 +142,7 @@ struct ChapterInnerList {
 
 pub async fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, MangalibError> {
     let web_url = &format!("https://api.mangalib.me/api/manga/{slug}/chapters");
-    let browser = Browser::default().map_err(|_| MangalibError::BrowserCreateError)?;
+    let browser = get_browser()?;
     let tab = browser
         .new_tab()
         .map_err(|_| MangalibError::BrowserTabCreateError)?;
