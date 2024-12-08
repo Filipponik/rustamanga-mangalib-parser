@@ -1,8 +1,8 @@
 use crate::processing::process;
 use futures::StreamExt;
 use lapin::options::{
-    BasicAckOptions, BasicConsumeOptions, ExchangeDeclareOptions, QueueBindOptions,
-    QueueDeclareOptions,
+    BasicAckOptions, BasicConsumeOptions, BasicQosOptions, ExchangeDeclareOptions,
+    QueueBindOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
 use lapin::{Connection, ConnectionProperties, ExchangeKind};
@@ -42,6 +42,11 @@ pub async fn consume(url: &str) {
             QueueBindOptions::default(),
             FieldTable::default(),
         )
+        .await
+        .unwrap();
+
+    channel
+        .basic_qos(1, BasicQosOptions::default())
         .await
         .unwrap();
 
