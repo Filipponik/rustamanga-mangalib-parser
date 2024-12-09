@@ -10,6 +10,12 @@ build:
 build-multiplatform:
 	docker buildx build --platform=$(platforms) -t $(image):$(version) -t $(image):latest --push .
 
+build-static:
+	docker run -v ./:/volume --rm -t clux/muslrust:stable cargo build --release
+	cd target/*-musl/release
+	upx --best --lzma mangalib
+
+
 fix:
 	cargo fmt
 	cargo fix --allow-dirty --allow-staged
