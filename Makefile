@@ -12,8 +12,7 @@ build-multiplatform:
 
 build-static:
 	docker run -v ./:/volume --rm -t clux/muslrust:stable cargo build --release
-	cd target/*-musl/release
-	upx --best --lzma mangalib
+	upx --best --lzma target/*-linux-musl/release/mangalib
 
 
 fix:
