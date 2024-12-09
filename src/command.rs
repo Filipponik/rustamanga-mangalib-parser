@@ -44,5 +44,5 @@ pub async fn send_resource(url: &str) {
 }
 
 pub async fn consume(url: &str) {
-    rabbitmq_consumer::consume(url).await;
+    rabbitmq_consumer::consume(url).await.unwrap();
 }
