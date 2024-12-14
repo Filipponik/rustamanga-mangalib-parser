@@ -78,7 +78,10 @@ async fn get_manga_urls(dto: &MangaScrappingParamsDto, chrome_max_count: u16) ->
     publish_manga(&dto.slug, &chapters, &chapter_urls_map).await
 }
 
-fn filter_chapters(chapters: Vec<mangalib::MangaChapter>, dto: &MangaScrappingParamsDto) -> Vec<mangalib::MangaChapter> {
+fn filter_chapters(
+    chapters: Vec<mangalib::MangaChapter>,
+    dto: &MangaScrappingParamsDto,
+) -> Vec<mangalib::MangaChapter> {
     let (chapter_num, volume_num) = match (&dto.after_chapter, &dto.after_volume) {
         (Some(c), Some(v)) => (c.to_string(), v.to_string()),
         _ => return chapters,
@@ -90,7 +93,7 @@ fn filter_chapters(chapters: Vec<mangalib::MangaChapter>, dto: &MangaScrappingPa
 
     match position {
         None => chapters,
-        Some(index) => chapters.into_iter().skip(index + 1).collect()
+        Some(index) => chapters.into_iter().skip(index + 1).collect(),
     }
 }
 
