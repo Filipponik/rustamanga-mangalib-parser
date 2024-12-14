@@ -54,7 +54,7 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) {
 async fn get_manga_urls(dto: &MangaScrappingParamsDto, chrome_max_count: u16) -> PublishedManga {
     let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
-    let chapters = mangalib::get_manga_chapters(&dto.slug).await.unwrap();
+    let chapters = mangalib::get_manga_chapters(&dto.slug).unwrap();
     let chapters = filter_chapters(chapters, dto);
     let mut threads = vec![];
     let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
@@ -64,7 +64,7 @@ async fn get_manga_urls(dto: &MangaScrappingParamsDto, chrome_max_count: u16) ->
         let semaphore = semaphore.clone();
         let thread = tokio::spawn(async move {
             let _permit = semaphore.acquire().await.unwrap();
-            let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter).await).unwrap();
+            let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter)).unwrap();
             let mut urls = urls.lock().unwrap();
             urls.insert(chapter.clone(), result);
         });
@@ -75,7 +75,7 @@ async fn get_manga_urls(dto: &MangaScrappingParamsDto, chrome_max_count: u16) ->
     futures::future::join_all(threads).await;
     let chapter_urls_map = chapter_urls_map.lock().unwrap().clone();
 
-    publish_manga(&dto.slug, &chapters, &chapter_urls_map).await
+    prepare_manga_for_publish(&dto.slug, &chapters, &chapter_urls_map)
 }
 
 fn filter_chapters(
@@ -111,7 +111,7 @@ pub struct PublishedMangaChapter {
     pub images_urls: Vec<String>,
 }
 
-async fn publish_manga(
+fn prepare_manga_for_publish(
     slug: &str,
     chapters: &[mangalib::MangaChapter],
     chapter_urls_map: &HashMap<mangalib::MangaChapter, Vec<String>>,

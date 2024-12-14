@@ -18,7 +18,7 @@ build-static:
 fix:
 	cargo fmt
 	cargo fix --allow-dirty --allow-staged
-	cargo clippy
+	cargo clippy -W clippy::pedantic -W clippy::nursery
 
 # Run tests
 test:
