@@ -49,20 +49,18 @@ pub async fn consume(url: &str) -> Result<(), ConsumerError> {
 
     while let Some(delivery) = consumer.next().await {
         if let Ok(delivery) = delivery {
-            let string_data = std::str::from_utf8(&delivery.data)
-                .map_err(|err| ConsumerError::ParseDeliveryError(ParseDeliveryErrorType::ParseFromUtf8Error(err)))?;
+            let string_data = std::str::from_utf8(&delivery.data).map_err(|err| {
+                ConsumerError::ParseDeliveryError(ParseDeliveryErrorType::ParseFromUtf8Error(err))
+            })?;
 
             info!("Received {}", string_data);
-            let payload = serde_json::from_str::<ScrapMangaRequest>(string_data)
-                .map_err(|err| ConsumerError::ParseDeliveryError(ParseDeliveryErrorType::ParseJsonError(err)));
+            let payload = serde_json::from_str::<ScrapMangaRequest>(string_data).map_err(|err| {
+                ConsumerError::ParseDeliveryError(ParseDeliveryErrorType::ParseJsonError(err))
+            });
 
             match payload {
                 Ok(value) => {
-                    process(
-                        chrome_max_count,
-                        value,
-                    )
-                        .await;
+                    process(chrome_max_count, value).await;
 
                     delivery.ack(BasicAckOptions::default()).await.unwrap();
                 }
@@ -82,7 +80,10 @@ async fn create_channel(url: &str) -> Result<Channel, ConsumerError> {
         .await
         .map_err(ConsumerError::ConnectError)?;
 
-    connect.create_channel().await.map_err(ConsumerError::ChannelCreateError)
+    connect
+        .create_channel()
+        .await
+        .map_err(ConsumerError::ChannelCreateError)
 }
 
 async fn create_queue(channel: &Channel) -> Result<Queue, ConsumerError> {
