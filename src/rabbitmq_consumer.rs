@@ -23,15 +23,15 @@ pub enum ParseDeliveryErrorType {
 
 #[derive(Debug)]
 pub enum ConsumerError {
-    ConfigError(ConfigErrorType),
-    ConnectError(Error),
-    ChannelCreateError(Error),
-    QueueCreateError(Error),
-    ExchangeCreateError(Error),
-    QueueBindError(Error),
-    ConsumerCreateError(Error),
-    PrefetchSetError(Error),
-    ParseDeliveryError(ParseDeliveryErrorType),
+    Config(ConfigErrorType),
+    Connect(Error),
+    ChannelCreate(Error),
+    QueueCreate(Error),
+    ExchangeCreate(Error),
+    QueueBind(Error),
+    ConsumerCreate(Error),
+    PrefetchSet(Error),
+    ParseDelivery(ParseDeliveryErrorType),
 }
 
 pub async fn consume(url: &str) -> Result<(), ConsumerError> {
@@ -50,12 +50,12 @@ pub async fn consume(url: &str) -> Result<(), ConsumerError> {
     while let Some(delivery) = consumer.next().await {
         if let Ok(delivery) = delivery {
             let string_data = std::str::from_utf8(&delivery.data).map_err(|err| {
-                ConsumerError::ParseDeliveryError(ParseDeliveryErrorType::ParseFromUtf8Error(err))
+                ConsumerError::ParseDelivery(ParseDeliveryErrorType::ParseFromUtf8Error(err))
             })?;
 
             info!("Received {}", string_data);
             let payload = serde_json::from_str::<ScrapMangaRequest>(string_data).map_err(|err| {
-                ConsumerError::ParseDeliveryError(ParseDeliveryErrorType::ParseJsonError(err))
+                ConsumerError::ParseDelivery(ParseDeliveryErrorType::ParseJsonError(err))
             });
 
             match payload {
@@ -78,12 +78,12 @@ pub async fn consume(url: &str) -> Result<(), ConsumerError> {
 async fn create_channel(url: &str) -> Result<Channel, ConsumerError> {
     let connect = Connection::connect(url, ConnectionProperties::default())
         .await
-        .map_err(ConsumerError::ConnectError)?;
+        .map_err(ConsumerError::Connect)?;
 
     connect
         .create_channel()
         .await
-        .map_err(ConsumerError::ChannelCreateError)
+        .map_err(ConsumerError::ChannelCreate)
 }
 
 async fn create_queue(channel: &Channel) -> Result<Queue, ConsumerError> {
@@ -94,7 +94,7 @@ async fn create_queue(channel: &Channel) -> Result<Queue, ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::QueueCreateError)
+        .map_err(ConsumerError::QueueCreate)
 }
 
 async fn create_exchange(channel: &Channel) -> Result<(), ConsumerError> {
@@ -106,7 +106,7 @@ async fn create_exchange(channel: &Channel) -> Result<(), ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::ExchangeCreateError)
+        .map_err(ConsumerError::ExchangeCreate)
 }
 
 async fn queue_bind(channel: &Channel) -> Result<(), ConsumerError> {
@@ -119,7 +119,7 @@ async fn queue_bind(channel: &Channel) -> Result<(), ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::QueueBindError)
+        .map_err(ConsumerError::QueueBind)
 }
 
 async fn create_consumer(channel: &Channel) -> Result<Consumer, ConsumerError> {
@@ -131,19 +131,19 @@ async fn create_consumer(channel: &Channel) -> Result<Consumer, ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::ConsumerCreateError)
+        .map_err(ConsumerError::ConsumerCreate)
 }
 
 async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), ConsumerError> {
     channel
         .basic_qos(prefetch_count, BasicQosOptions::default())
         .await
-        .map_err(ConsumerError::PrefetchSetError)
+        .map_err(ConsumerError::PrefetchSet)
 }
 
 fn get_chrome_max_count() -> Result<u16, ConsumerError> {
     env::var("CHROME_MAX_COUNT")
-        .map_err(|err| ConsumerError::ConfigError(ConfigErrorType::ParseEnv(err)))?
+        .map_err(|err| ConsumerError::Config(ConfigErrorType::ParseEnv(err)))?
         .parse::<u16>()
-        .map_err(|err| ConsumerError::ConfigError(ConfigErrorType::ParseInt(err)))
+        .map_err(|err| ConsumerError::Config(ConfigErrorType::ParseInt(err)))
 }
