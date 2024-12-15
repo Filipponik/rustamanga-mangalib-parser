@@ -39,7 +39,9 @@ async fn scrap_manga(
     State(state): State<AppState>,
     Json(payload): Json<ScrapMangaRequest>,
 ) -> (StatusCode, Json<Value>) {
-    tokio::spawn(async move { processing::process(state.chrome_max_count, payload).await });
+    tokio::spawn(async move {
+        let _ignored_result = processing::process(state.chrome_max_count, payload).await;
+    });
 
     (
         StatusCode::OK,

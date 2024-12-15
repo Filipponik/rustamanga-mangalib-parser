@@ -1,11 +1,13 @@
-use crate::processing::{process, ScrapMangaRequest};
+use crate::processing::{process, Error as ProcessingError, ScrapMangaRequest};
 use futures::StreamExt;
 use lapin::options::{
-    BasicAckOptions, BasicConsumeOptions, BasicQosOptions, ExchangeDeclareOptions,
-    QueueBindOptions, QueueDeclareOptions,
+    BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicQosOptions,
+    ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
-use lapin::{Channel, Connection, ConnectionProperties, Consumer, Error, ExchangeKind, Queue};
+use lapin::{
+    Channel, Connection, ConnectionProperties, Consumer, Error as AmqpError, ExchangeKind, Queue,
+};
 use std::env;
 use tracing::{error, info};
 
@@ -22,19 +24,22 @@ pub enum ParseDeliveryErrorType {
 }
 
 #[derive(Debug)]
-pub enum ConsumerError {
+pub enum Error {
     Config(ConfigErrorType),
-    Connect(Error),
-    ChannelCreate(Error),
-    QueueCreate(Error),
-    ExchangeCreate(Error),
-    QueueBind(Error),
-    ConsumerCreate(Error),
-    PrefetchSet(Error),
+    Connect(AmqpError),
+    ChannelCreate(AmqpError),
+    QueueCreate(AmqpError),
+    ExchangeCreate(AmqpError),
+    QueueBind(AmqpError),
+    ConsumerCreate(AmqpError),
+    PrefetchSet(AmqpError),
     ParseDelivery(ParseDeliveryErrorType),
+    MangalibProcessing(ProcessingError),
+    Ack(AmqpError),
+    Nack(AmqpError),
 }
 
-pub async fn consume(url: &str) -> Result<(), ConsumerError> {
+pub async fn consume(url: &str) -> Result<(), Error> {
     let channel = create_channel(url).await?;
     create_queue(&channel).await?;
     create_exchange(&channel).await?;
@@ -48,45 +53,64 @@ pub async fn consume(url: &str) -> Result<(), ConsumerError> {
     let chrome_max_count = get_chrome_max_count()?;
 
     while let Some(delivery) = consumer.next().await {
-        if let Ok(delivery) = delivery {
-            let string_data = std::str::from_utf8(&delivery.data).map_err(|err| {
-                ConsumerError::ParseDelivery(ParseDeliveryErrorType::ParseFromUtf8Error(err))
-            })?;
+        let delivery = if let Ok(v) = delivery {
+            v
+        } else {
+            continue;
+        };
 
-            info!("Received {}", string_data);
-            let payload = serde_json::from_str::<ScrapMangaRequest>(string_data).map_err(|err| {
-                ConsumerError::ParseDelivery(ParseDeliveryErrorType::ParseJsonError(err))
-            });
+        let string_data = std::str::from_utf8(&delivery.data).map_err(|err| {
+            Error::ParseDelivery(ParseDeliveryErrorType::ParseFromUtf8Error(err))
+        })?;
 
-            match payload {
-                Ok(value) => {
-                    process(chrome_max_count, value).await;
+        info!("Received {}", string_data);
+        let payload = serde_json::from_str::<ScrapMangaRequest>(string_data).map_err(|err| {
+            Error::ParseDelivery(ParseDeliveryErrorType::ParseJsonError(err))
+        });
 
-                    delivery.ack(BasicAckOptions::default()).await.unwrap();
-                }
-                Err(err) => {
-                    error!("{err:#?}");
-                    continue;
-                }
+        let processing_result = match payload {
+            Ok(value) => process(chrome_max_count, value).await,
+            Err(err) => {
+                error!("{err:#?}");
+                continue;
             }
-        }
+        };
+
+        match processing_result {
+            Ok(_) => {
+                delivery
+                    .ack(BasicAckOptions::default())
+                    .await
+                    .map_err(Error::Ack)?;
+            }
+            Err(err) => {
+                delivery
+                    .nack(BasicNackOptions {
+                        requeue: false,
+                        ..Default::default()
+                    })
+                    .await
+                    .map_err(Error::Nack)?;
+                error!("{err:#?}");
+            }
+        };
     }
 
     Ok(())
 }
 
-async fn create_channel(url: &str) -> Result<Channel, ConsumerError> {
+async fn create_channel(url: &str) -> Result<Channel, Error> {
     let connect = Connection::connect(url, ConnectionProperties::default())
         .await
-        .map_err(ConsumerError::Connect)?;
+        .map_err(Error::Connect)?;
 
     connect
         .create_channel()
         .await
-        .map_err(ConsumerError::ChannelCreate)
+        .map_err(Error::ChannelCreate)
 }
 
-async fn create_queue(channel: &Channel) -> Result<Queue, ConsumerError> {
+async fn create_queue(channel: &Channel) -> Result<Queue, Error> {
     channel
         .queue_declare(
             "manga_urls_queue",
@@ -94,10 +118,10 @@ async fn create_queue(channel: &Channel) -> Result<Queue, ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::QueueCreate)
+        .map_err(Error::QueueCreate)
 }
 
-async fn create_exchange(channel: &Channel) -> Result<(), ConsumerError> {
+async fn create_exchange(channel: &Channel) -> Result<(), Error> {
     channel
         .exchange_declare(
             "manga_urls_exchange",
@@ -106,10 +130,10 @@ async fn create_exchange(channel: &Channel) -> Result<(), ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::ExchangeCreate)
+        .map_err(Error::ExchangeCreate)
 }
 
-async fn queue_bind(channel: &Channel) -> Result<(), ConsumerError> {
+async fn queue_bind(channel: &Channel) -> Result<(), Error> {
     channel
         .queue_bind(
             "manga_urls_queue",
@@ -119,10 +143,10 @@ async fn queue_bind(channel: &Channel) -> Result<(), ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::QueueBind)
+        .map_err(Error::QueueBind)
 }
 
-async fn create_consumer(channel: &Channel) -> Result<Consumer, ConsumerError> {
+async fn create_consumer(channel: &Channel) -> Result<Consumer, Error> {
     channel
         .basic_consume(
             "manga_urls_queue",
@@ -131,19 +155,19 @@ async fn create_consumer(channel: &Channel) -> Result<Consumer, ConsumerError> {
             FieldTable::default(),
         )
         .await
-        .map_err(ConsumerError::ConsumerCreate)
+        .map_err(Error::ConsumerCreate)
 }
 
-async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), ConsumerError> {
+async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), Error> {
     channel
         .basic_qos(prefetch_count, BasicQosOptions::default())
         .await
-        .map_err(ConsumerError::PrefetchSet)
+        .map_err(Error::PrefetchSet)
 }
 
-fn get_chrome_max_count() -> Result<u16, ConsumerError> {
+fn get_chrome_max_count() -> Result<u16, Error> {
     env::var("CHROME_MAX_COUNT")
-        .map_err(|err| ConsumerError::Config(ConfigErrorType::ParseEnv(err)))?
+        .map_err(|err| Error::Config(ConfigErrorType::ParseEnv(err)))?
         .parse::<u16>()
-        .map_err(|err| ConsumerError::Config(ConfigErrorType::ParseInt(err)))
+        .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))
 }

@@ -2,7 +2,7 @@ use crate::mangalib;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::Semaphore;
+use tokio::sync::{AcquireError, Semaphore};
 use tracing::{error, info};
 
 macro_rules! retry {
@@ -22,6 +22,15 @@ macro_rules! retry {
     };
 }
 
+#[derive(Debug)]
+pub enum Error {
+    Mangalib(mangalib::Error),
+    ChapterNotFound,
+    ChapterNotFoundForFilter,
+    MutexLock,
+    SemaphoreAcquire(AcquireError),
+}
+
 #[derive(Deserialize)]
 pub struct ScrapMangaRequest {
     slug: String,
@@ -36,44 +45,54 @@ struct MangaScrappingParamsDto {
     after_volume: Option<String>,
 }
 
-pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) {
+pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Result<(), Error> {
     let dto = MangaScrappingParamsDto {
         slug: payload.slug,
         after_chapter: payload.after_chapter,
         after_volume: payload.after_volume,
     };
-    let manga = get_manga_urls(&dto, chrome_max_count).await;
+    let manga = get_manga_urls(&dto, chrome_max_count).await?;
     info!("Sending manga to {}", payload.callback_url);
     let response = send_info_about_manga(&payload.callback_url, &manga).await;
     match response {
         Ok(body) => info!("Successfully sent manga: {body}"),
         Err(err) => error!("Error while sending manga: {err:?}"),
-    }
+    };
+
+    Ok(())
 }
 
-async fn get_manga_urls(dto: &MangaScrappingParamsDto, chrome_max_count: u16) -> PublishedManga {
+async fn get_manga_urls(
+    dto: &MangaScrappingParamsDto,
+    chrome_max_count: u16,
+) -> Result<PublishedManga, Error> {
     let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
-    let chapters = mangalib::get_manga_chapters(&dto.slug).unwrap();
-    let chapters = filter_chapters(chapters, dto);
-    let mut threads = vec![];
+    let chapters = mangalib::get_manga_chapters(&dto.slug).map_err(Error::Mangalib)?;
+    let chapters = match filter_chapters(chapters, dto) {
+        None => return Err(Error::ChapterNotFoundForFilter),
+        Some(c) => c,
+    };
     let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
     for chapter in chapters.clone() {
         let urls = Arc::clone(&chapter_urls_map);
         let slug = dto.slug.to_string();
         let semaphore = semaphore.clone();
-        let thread = tokio::spawn(async move {
-            let _permit = semaphore.acquire().await.unwrap();
-            let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter)).unwrap();
-            let mut urls = urls.lock().unwrap();
+        tokio::try_join!(async move {
+            let _permit = semaphore.acquire().await.map_err(Error::SemaphoreAcquire)?;
+            let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter))
+                .map_err(Error::Mangalib)?;
+            let mut urls = urls.lock().map_err(|_| Error::MutexLock)?;
             urls.insert(chapter.clone(), result);
-        });
 
-        threads.push(thread);
+            Ok::<(), Error>(())
+        })?;
     }
 
-    futures::future::join_all(threads).await;
-    let chapter_urls_map = chapter_urls_map.lock().unwrap().clone();
+    let chapter_urls_map = chapter_urls_map
+        .lock()
+        .map_err(|_| Error::MutexLock)?
+        .clone();
 
     prepare_manga_for_publish(&dto.slug, &chapters, &chapter_urls_map)
 }
@@ -81,10 +100,10 @@ async fn get_manga_urls(dto: &MangaScrappingParamsDto, chrome_max_count: u16) ->
 fn filter_chapters(
     chapters: Vec<mangalib::MangaChapter>,
     dto: &MangaScrappingParamsDto,
-) -> Vec<mangalib::MangaChapter> {
+) -> Option<Vec<mangalib::MangaChapter>> {
     let (chapter_num, volume_num) = match (&dto.after_chapter, &dto.after_volume) {
         (Some(c), Some(v)) => (c.to_string(), v.to_string()),
-        _ => return chapters,
+        _ => return Some(chapters),
     };
 
     let position = chapters.iter().position(|chapter| {
@@ -92,8 +111,8 @@ fn filter_chapters(
     });
 
     match position {
-        None => chapters,
-        Some(index) => chapters.into_iter().skip(index + 1).collect(),
+        None => None,
+        Some(index) => Some(chapters.into_iter().skip(index + 1).collect()),
     }
 }
 
@@ -115,10 +134,14 @@ fn prepare_manga_for_publish(
     slug: &str,
     chapters: &[mangalib::MangaChapter],
     chapter_urls_map: &HashMap<mangalib::MangaChapter, Vec<String>>,
-) -> PublishedManga {
+) -> Result<PublishedManga, Error> {
     let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
     for chapter in chapters {
-        let url_images = chapter_urls_map.get(chapter).unwrap();
+        let url_images = match chapter_urls_map.get(chapter) {
+            Some(v) => v,
+            None => return Err(Error::ChapterNotFound),
+        };
+
         telegraph_urls.push(PublishedMangaChapter {
             url: None,
             chapter: chapter.chapter_number.clone(),
@@ -127,10 +150,10 @@ fn prepare_manga_for_publish(
         });
     }
 
-    PublishedManga {
+    Ok(PublishedManga {
         slug: slug.to_string(),
         chapters: telegraph_urls,
-    }
+    })
 }
 
 async fn send_info_about_manga(url: &str, manga: &PublishedManga) -> reqwest::Result<String> {
