@@ -58,9 +58,7 @@ pub fn get_manga_chapter_images(
     manga_chapter: &MangaChapter,
 ) -> Result<Vec<String>, Error> {
     let browser = get_browser()?;
-    let tab = browser
-        .new_tab()
-        .map_err(|_| Error::BrowserTabCreate)?;
+    let tab = browser.new_tab().map_err(|_| Error::BrowserTabCreate)?;
     let web_url = format!(
         "https://api.mangalib.me/api/manga/{slug}/chapter?number={}&volume={}",
         manga_chapter.chapter_number, manga_chapter.chapter_volume,
@@ -143,9 +141,7 @@ struct ChapterInnerList {
 pub fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Error> {
     let web_url = &format!("https://api.mangalib.me/api/manga/{slug}/chapters");
     let browser = get_browser()?;
-    let tab = browser
-        .new_tab()
-        .map_err(|_| Error::BrowserTabCreate)?;
+    let tab = browser.new_tab().map_err(|_| Error::BrowserTabCreate)?;
     debug!("Searching manga chapters at {web_url}");
 
     tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))

@@ -82,8 +82,9 @@ async fn get_manga_urls(
             let _permit = semaphore.acquire().await.map_err(Error::SemaphoreAcquire)?;
             let result = retry!(mangalib::get_manga_chapter_images(&slug, &chapter))
                 .map_err(Error::Mangalib)?;
-            let mut urls = urls.lock().map_err(|_| Error::MutexLock)?;
-            urls.insert(chapter.clone(), result);
+            urls.lock()
+                .map_err(|_| Error::MutexLock)?
+                .insert(chapter.clone(), result);
 
             Ok::<(), Error>(())
         })?;
@@ -110,10 +111,7 @@ fn filter_chapters(
         chapter_num.eq(&chapter.chapter_number) && volume_num.eq(&chapter.chapter_volume)
     });
 
-    match position {
-        None => None,
-        Some(index) => Some(chapters.into_iter().skip(index + 1).collect()),
-    }
+    position.map(|index| chapters.into_iter().skip(index + 1).collect())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -137,9 +135,8 @@ fn prepare_manga_for_publish(
 ) -> Result<PublishedManga, Error> {
     let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
     for chapter in chapters {
-        let url_images = match chapter_urls_map.get(chapter) {
-            Some(v) => v,
-            None => return Err(Error::ChapterNotFound),
+        let Some(url_images) = chapter_urls_map.get(chapter) else {
+            return Err(Error::ChapterNotFound);
         };
 
         telegraph_urls.push(PublishedMangaChapter {

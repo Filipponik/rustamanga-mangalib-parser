@@ -1,4 +1,4 @@
-use crate::processing::{process, Error as ProcessingError, ScrapMangaRequest};
+use crate::processing::{process, ScrapMangaRequest};
 use futures::StreamExt;
 use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicQosOptions,
@@ -34,7 +34,6 @@ pub enum Error {
     ConsumerCreate(AmqpError),
     PrefetchSet(AmqpError),
     ParseDelivery(ParseDeliveryErrorType),
-    MangalibProcessing(ProcessingError),
     Ack(AmqpError),
     Nack(AmqpError),
 }
@@ -53,20 +52,16 @@ pub async fn consume(url: &str) -> Result<(), Error> {
     let chrome_max_count = get_chrome_max_count()?;
 
     while let Some(delivery) = consumer.next().await {
-        let delivery = if let Ok(v) = delivery {
-            v
-        } else {
+        let Ok(delivery) = delivery else {
             continue;
         };
 
-        let string_data = std::str::from_utf8(&delivery.data).map_err(|err| {
-            Error::ParseDelivery(ParseDeliveryErrorType::ParseFromUtf8Error(err))
-        })?;
+        let string_data = std::str::from_utf8(&delivery.data)
+            .map_err(|err| Error::ParseDelivery(ParseDeliveryErrorType::ParseFromUtf8Error(err)))?;
 
         info!("Received {}", string_data);
-        let payload = serde_json::from_str::<ScrapMangaRequest>(string_data).map_err(|err| {
-            Error::ParseDelivery(ParseDeliveryErrorType::ParseJsonError(err))
-        });
+        let payload = serde_json::from_str::<ScrapMangaRequest>(string_data)
+            .map_err(|err| Error::ParseDelivery(ParseDeliveryErrorType::ParseJsonError(err)));
 
         let processing_result = match payload {
             Ok(value) => process(chrome_max_count, value).await,
@@ -77,7 +72,7 @@ pub async fn consume(url: &str) -> Result<(), Error> {
         };
 
         match processing_result {
-            Ok(_) => {
+            Ok(()) => {
                 delivery
                     .ack(BasicAckOptions::default())
                     .await
@@ -104,10 +99,7 @@ async fn create_channel(url: &str) -> Result<Channel, Error> {
         .await
         .map_err(Error::Connect)?;
 
-    connect
-        .create_channel()
-        .await
-        .map_err(Error::ChannelCreate)
+    connect.create_channel().await.map_err(Error::ChannelCreate)
 }
 
 async fn create_queue(channel: &Channel) -> Result<Queue, Error> {
