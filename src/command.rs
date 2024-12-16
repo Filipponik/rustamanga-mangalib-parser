@@ -8,6 +8,7 @@ fn get_settings() -> Command {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
+        .version(env!("CARGO_PKG_VERSION"))
         .subcommands([
             Command::new("serve").about("Start web server"),
             Command::new("send-resource")
