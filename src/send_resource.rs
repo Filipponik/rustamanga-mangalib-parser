@@ -15,8 +15,10 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
 
     let mut handlers = Vec::new();
     for res in resource_vec {
+        let res_cloned = res.clone();
+        let url_cloned = url.to_string();
         let handler = tokio::spawn(async move {
-            let sending_result = Client::new().post(url).json(&res).send().await;
+            let sending_result = Client::new().post(&url_cloned).json(&res_cloned).send().await;
 
             match sending_result {
                 Ok(_) => {
@@ -32,4 +34,6 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
     }
 
     futures::future::join_all(handlers).await;
+
+    Ok(())
 }
