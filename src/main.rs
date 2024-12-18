@@ -9,7 +9,7 @@ mod send_resource;
 mod server;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), command::Error> {
     config::setup_tracing();
-    process_commands().await;
+    process_commands().await
 }

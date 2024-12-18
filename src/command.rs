@@ -22,29 +22,37 @@ fn get_settings() -> Command {
         ])
 }
 
-pub async fn process_commands() {
+#[derive(Debug)]
+pub enum Error {
+    NoCommandSpecified,
+    Serve(server::Error),
+    SendResource(send_resource::Error),
+    Consume(rabbitmq_consumer::Error),
+}
+
+pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", _)) => serve().await,
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
-            send_resource(url).await;
+            send_resource(url).await
         }
         Some(("consume", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
-            consume(url).await;
+            consume(url).await
         }
-        Some(_) | None => panic!("No command specified"),
+        _ => Err(Error::NoCommandSpecified),
     }
 }
 
-async fn serve() {
-    server::serve().await;
+async fn serve() -> Result<(), Error> {
+    server::serve().await.map_err(Error::Serve)
 }
 
-async fn send_resource(url: &str) {
-    send_resource::send_resource(url).await;
+async fn send_resource(url: &str) -> Result<(), Error> {
+    send_resource::send_resource(url).await.map_err(Error::SendResource)
 }
 
-async fn consume(url: &str) {
-    rabbitmq_consumer::consume(url).await.unwrap();
+async fn consume(url: &str) -> Result<(), Error> {
+    rabbitmq_consumer::consume(url).await.map_err(Error::Consume)
 }

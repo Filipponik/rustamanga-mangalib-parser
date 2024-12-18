@@ -15,16 +15,33 @@ struct AppState {
     chrome_max_count: u16,
 }
 
-pub async fn serve() {
-    let state = AppState {
-        port: env::var("APP_PORT").unwrap().parse::<u16>().unwrap(),
-        chrome_max_count: env::var("CHROME_MAX_COUNT")
-            .unwrap()
-            .parse::<u16>()
-            .unwrap(),
-    };
+#[derive(Debug)]
+pub enum ConfigErrorType {
+    ParseEnv(env::VarError),
+    ParseInt(std::num::ParseIntError),
+}
+
+#[derive(Debug)]
+pub enum Error {
+    Config(ConfigErrorType),
+    ServerError(std::io::Error),
+}
+
+pub async fn serve() -> Result<(), Error> {
+    let port = env::var("APP_PORT")
+        .map_err(|err| Error::Config(ConfigErrorType::ParseEnv(err)))?
+        .parse::<u16>()
+        .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))?;
+    let chrome_max_count = env::var("CHROME_MAX_COUNT")
+        .map_err(|err| Error::Config(ConfigErrorType::ParseEnv(err)))?
+        .parse::<u16>()
+        .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))?;
+
+    let state = AppState { port, chrome_max_count };
     let address = &format!("0.0.0.0:{}", state.port.clone());
-    let listener = TcpListener::bind(address).await.unwrap();
+    let listener = TcpListener::bind(address)
+        .await
+        .map_err(Error::ServerError)?;
     let router: Router = Router::new()
         .route("/scrap-manga", post(scrap_manga))
         .route("/scrap-manga/", post(scrap_manga))
@@ -32,7 +49,10 @@ pub async fn serve() {
         .fallback(handle_404);
 
     info!("Web server is up: {address}");
-    axum::serve(listener, router).await.unwrap();
+    axum::serve(listener, router).await
+        .map_err(Error::ServerError)?;
+
+    Ok(())
 }
 
 async fn scrap_manga(
