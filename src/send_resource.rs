@@ -11,14 +11,18 @@ pub enum Error {
 
 pub async fn send_resource(url: &str) -> Result<(), Error> {
     let resource_vec: Vec<Value> =
-        serde_json::from_str(MANGALIB_STATIC_RESOURCE).map_err(|err| Error::Parse(err))?;
+        serde_json::from_str(MANGALIB_STATIC_RESOURCE).map_err(Error::Parse)?;
 
     let mut handlers = Vec::new();
     for res in resource_vec {
         let res_cloned = res.clone();
         let url_cloned = url.to_string();
         let handler = tokio::spawn(async move {
-            let sending_result = Client::new().post(&url_cloned).json(&res_cloned).send().await;
+            let sending_result = Client::new()
+                .post(&url_cloned)
+                .json(&res_cloned)
+                .send()
+                .await;
 
             match sending_result {
                 Ok(_) => {

@@ -37,7 +37,10 @@ pub async fn serve() -> Result<(), Error> {
         .parse::<u16>()
         .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))?;
 
-    let state = AppState { port, chrome_max_count };
+    let state = AppState {
+        port,
+        chrome_max_count,
+    };
     let address = &format!("0.0.0.0:{}", state.port.clone());
     let listener = TcpListener::bind(address)
         .await
@@ -49,7 +52,8 @@ pub async fn serve() -> Result<(), Error> {
         .fallback(handle_404);
 
     info!("Web server is up: {address}");
-    axum::serve(listener, router).await
+    axum::serve(listener, router)
+        .await
         .map_err(Error::ServerError)?;
 
     Ok(())

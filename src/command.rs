@@ -50,9 +50,13 @@ async fn serve() -> Result<(), Error> {
 }
 
 async fn send_resource(url: &str) -> Result<(), Error> {
-    send_resource::send_resource(url).await.map_err(Error::SendResource)
+    send_resource::send_resource(url)
+        .await
+        .map_err(Error::SendResource)
 }
 
 async fn consume(url: &str) -> Result<(), Error> {
-    rabbitmq_consumer::consume(url).await.map_err(Error::Consume)
+    rabbitmq_consumer::consume(url)
+        .await
+        .map_err(Error::Consume)
 }
