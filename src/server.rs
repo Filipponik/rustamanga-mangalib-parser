@@ -7,7 +7,6 @@ use axum::{Json, Router};
 use serde_json::{json, Value};
 use std::env;
 use std::sync::Arc;
-use futures::TryFutureExt;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tracing::{error, info};
@@ -33,12 +32,13 @@ struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Result<Self, ConfigErrorType> {
-        let port = env::var("APP_PORT")?
-            .parse::<u16>()?;
-        let chrome_max_count = env::var("CHROME_MAX_COUNT")?
-            .parse::<u16>()?;
+        let port = env::var("APP_PORT")?.parse::<u16>()?;
+        let chrome_max_count = env::var("CHROME_MAX_COUNT")?.parse::<u16>()?;
 
-        Ok(Self { port, chrome_max_count })
+        Ok(Self {
+            port,
+            chrome_max_count,
+        })
     }
 
     pub fn address(&self) -> String {
