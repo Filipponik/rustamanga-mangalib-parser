@@ -19,7 +19,7 @@ struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: AppConfig) -> Self {
+    pub const fn new(config: AppConfig) -> Self {
         Self { config }
     }
 }
@@ -70,7 +70,7 @@ pub async fn serve() -> Result<(), Error> {
 
     let router: Router = Router::new()
         .route(SCRAP_MANGA_ROUTE, post(scrap_manga))
-        .route(&format!("{}/", SCRAP_MANGA_ROUTE), post(scrap_manga))
+        .route(&format!("{SCRAP_MANGA_ROUTE}/"), post(scrap_manga))
         .with_state(state)
         .fallback(handle_404);
 
