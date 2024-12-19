@@ -1,70 +1,93 @@
 use crate::processing;
 use crate::processing::ScrapMangaRequest;
-use axum::extract::State;
+use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
 use axum::routing::post;
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use std::env;
+use std::sync::Arc;
+use futures::TryFutureExt;
+use thiserror::Error;
 use tokio::net::TcpListener;
-use tracing::info;
+use tracing::{error, info};
+
+const SCRAP_MANGA_ROUTE: &str = "/scrap-manga";
 
 #[derive(Clone)]
 struct AppState {
+    config: AppConfig,
+}
+
+impl AppState {
+    pub fn new(config: AppConfig) -> Self {
+        Self { config }
+    }
+}
+
+#[derive(Clone)]
+struct AppConfig {
     port: u16,
     chrome_max_count: u16,
 }
 
-#[derive(Debug)]
-pub enum ConfigErrorType {
-    ParseEnv(env::VarError),
-    ParseInt(std::num::ParseIntError),
+impl AppConfig {
+    pub fn from_env() -> Result<Self, ConfigErrorType> {
+        let port = env::var("APP_PORT")?
+            .parse::<u16>()?;
+        let chrome_max_count = env::var("CHROME_MAX_COUNT")?
+            .parse::<u16>()?;
+
+        Ok(Self { port, chrome_max_count })
+    }
+
+    pub fn address(&self) -> String {
+        format!("0.0.0.0:{}", self.port)
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+pub enum ConfigErrorType {
+    #[error("Error while parsing environment variable {0}")]
+    ParseEnv(#[from] env::VarError),
+    #[error("Error while parsing int variable {0}")]
+    ParseInt(#[from] std::num::ParseIntError),
+}
+
+#[derive(Debug, Error)]
 pub enum Error {
-    Config(ConfigErrorType),
-    ServerError(std::io::Error),
+    #[error("Error while parsing config {0}")]
+    Config(#[from] ConfigErrorType),
+    #[error("Server error {0}")]
+    ServerError(#[from] std::io::Error),
 }
 
 pub async fn serve() -> Result<(), Error> {
-    let port = env::var("APP_PORT")
-        .map_err(|err| Error::Config(ConfigErrorType::ParseEnv(err)))?
-        .parse::<u16>()
-        .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))?;
-    let chrome_max_count = env::var("CHROME_MAX_COUNT")
-        .map_err(|err| Error::Config(ConfigErrorType::ParseEnv(err)))?
-        .parse::<u16>()
-        .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))?;
+    let config = AppConfig::from_env()?;
+    let state = Arc::new(AppState::new(config));
+    let address = state.config.address();
+    let listener = TcpListener::bind(&address).await?;
 
-    let state = AppState {
-        port,
-        chrome_max_count,
-    };
-    let address = &format!("0.0.0.0:{}", state.port.clone());
-    let listener = TcpListener::bind(address)
-        .await
-        .map_err(Error::ServerError)?;
     let router: Router = Router::new()
-        .route("/scrap-manga", post(scrap_manga))
-        .route("/scrap-manga/", post(scrap_manga))
+        .route(SCRAP_MANGA_ROUTE, post(scrap_manga))
+        .route(&format!("{}/", SCRAP_MANGA_ROUTE), post(scrap_manga))
         .with_state(state)
         .fallback(handle_404);
 
-    info!("Web server is up: {address}");
-    axum::serve(listener, router)
-        .await
-        .map_err(Error::ServerError)?;
+    info!("Web server is up: {}", address);
+    axum::serve(listener, router).await?;
 
     Ok(())
 }
 
 async fn scrap_manga(
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<ScrapMangaRequest>,
 ) -> (StatusCode, Json<Value>) {
     tokio::spawn(async move {
-        let _ignored_result = processing::process(state.chrome_max_count, payload).await;
+        if let Err(err) = processing::process(state.config.chrome_max_count, payload).await {
+            error!("Error while processing manga: {err:?}");
+        }
     });
 
     (
@@ -76,12 +99,12 @@ async fn scrap_manga(
     )
 }
 
-async fn handle_404() -> (StatusCode, Json<Value>) {
+async fn handle_404(uri: OriginalUri) -> (StatusCode, Json<Value>) {
     (
         StatusCode::NOT_FOUND,
         Json(json!({
             "success": false,
-            "message": "Route not found"
+            "message": format!("Route {} not found", uri.0)
         })),
     )
 }
