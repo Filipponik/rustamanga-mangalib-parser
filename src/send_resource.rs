@@ -21,14 +21,14 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
     let client = Client::new();
     let handlers = resource_vec
         .into_iter()
-        .map(|res| process_single_resource(url, res, client.clone()));
+        .map(|res| process_single_resource(url.to_string(), res, client.clone()));
 
     futures::future::join_all(handlers).await;
 
     Ok(())
 }
 
-fn process_single_resource(url: &str, res: Value, client: Client) -> JoinHandle<()> {
+fn process_single_resource(url: String, res: Value, client: Client) -> JoinHandle<()> {
     tokio::spawn(async move {
         match send_single_resource(client, &url, res).await {
             Ok(_) => info!("Successfully sent"),
