@@ -31,7 +31,7 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
 fn process_single_resource(url: String, res: Value, client: Client) -> JoinHandle<()> {
     tokio::spawn(async move {
         match send_single_resource(client, &url, res).await {
-            Ok(_) => info!("Successfully sent"),
+            Ok(()) => info!("Successfully sent"),
             Err(err) => error!("Failed to send resource: {}", err),
         };
     })

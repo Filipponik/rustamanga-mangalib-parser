@@ -1,5 +1,6 @@
 use crate::processing::{process, ScrapMangaRequest};
 use futures::StreamExt;
+use lapin::message::Delivery;
 use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicQosOptions,
     ExchangeDeclareOptions, QueueBindOptions, QueueDeclareOptions,
@@ -9,7 +10,6 @@ use lapin::{
     Channel, Connection, ConnectionProperties, Consumer, Error as AmqpError, ExchangeKind, Queue,
 };
 use std::env;
-use lapin::message::Delivery;
 use thiserror::Error;
 use tracing::{error, info};
 
@@ -82,7 +82,7 @@ pub async fn consume(url: &str) -> Result<(), Error> {
             continue;
         };
 
-        let payload = parse_delivery(delivery);
+        let payload = parse_delivery(&delivery);
 
         let processing_result = match payload {
             Ok(value) => process(chrome_max_count, value).await,
@@ -123,11 +123,11 @@ fn parse_json<T: serde::de::DeserializeOwned>(data: &str) -> Result<T, ParseDeli
     Ok(serde_json::from_str::<T>(data)?)
 }
 
-fn parse_delivery(delivery: Delivery) -> Result<ScrapMangaRequest, ParseDeliveryErrorType> {
+fn parse_delivery(delivery: &Delivery) -> Result<ScrapMangaRequest, ParseDeliveryErrorType> {
     let string_data = parse_delivery_data(&delivery.data)?;
     info!("Received {}", string_data);
 
-    Ok(parse_json(&string_data)?)
+    parse_json(&string_data)
 }
 
 async fn create_channel(url: &str) -> Result<Channel, AmqpWrapperError> {
@@ -135,7 +135,10 @@ async fn create_channel(url: &str) -> Result<Channel, AmqpWrapperError> {
         .await
         .map_err(AmqpWrapperError::Connect)?;
 
-    connect.create_channel().await.map_err(AmqpWrapperError::ChannelCreate)
+    connect
+        .create_channel()
+        .await
+        .map_err(AmqpWrapperError::ChannelCreate)
 }
 
 async fn create_queue(channel: &Channel) -> Result<Queue, AmqpWrapperError> {
@@ -194,6 +197,5 @@ async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), Amqp
 }
 
 fn get_chrome_max_count() -> Result<u16, ConfigErrorType> {
-    Ok(env::var("CHROME_MAX_COUNT")?
-        .parse::<u16>()?)
+    Ok(env::var("CHROME_MAX_COUNT")?.parse::<u16>()?)
 }
