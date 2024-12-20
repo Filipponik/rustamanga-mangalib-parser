@@ -78,14 +78,9 @@ pub fn get_manga_chapter_images(
     let images = image_inner_list
         .data
         .pages
-        .iter()
-        .fold(Vec::new(), |mut acc, item| {
-            let mut absolute_url = IMAGE_SERVER_PREFIX.to_string();
-            absolute_url.push_str(&item.url.clone());
-            acc.push(absolute_url);
-
-            acc
-        });
+        .into_iter()
+        .map(|item| format!("{IMAGE_SERVER_PREFIX}{}", item.url))
+        .collect();
 
     Ok(images)
 }
@@ -182,16 +177,9 @@ pub fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Error> {
     let chapter_inner_list = parser.parse::<ChapterInnerList>()?;
     let chapters = chapter_inner_list
         .data
-        .iter()
-        .fold(Vec::new(), |mut acc, chapter_inner| {
-            let chapter = MangaChapter {
-                chapter_volume: chapter_inner.volume.to_string(),
-                chapter_number: chapter_inner.number.clone(),
-            };
-
-            acc.push(chapter);
-            acc
-        });
+        .into_iter()
+        .map(|chapter_inner| MangaChapter::new(chapter_inner.volume, chapter_inner.number))
+        .collect();
 
     Ok(chapters)
 }
