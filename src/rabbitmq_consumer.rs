@@ -9,33 +9,59 @@ use lapin::{
     Channel, Connection, ConnectionProperties, Consumer, Error as AmqpError, ExchangeKind, Queue,
 };
 use std::env;
+use lapin::message::Delivery;
+use thiserror::Error;
 use tracing::{error, info};
 
-#[derive(Debug)]
+const QUEUE_NAME: &str = "manga_urls_queue";
+const EXCHANGE_NAME: &str = "manga_urls_exchange";
+
+#[derive(Debug, Error)]
 pub enum ConfigErrorType {
-    ParseEnv(env::VarError),
-    ParseInt(std::num::ParseIntError),
+    #[error("Failed to parse environment variable {0}")]
+    ParseEnv(#[from] env::VarError),
+    #[error("Failed to parse integer variable {0}")]
+    ParseInt(#[from] std::num::ParseIntError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParseDeliveryErrorType {
-    ParseFromUtf8Error(std::str::Utf8Error),
-    ParseJsonError(serde_json::error::Error),
+    #[error("Failed to parse UTF-8 {0}")]
+    ParseFromUtf8Error(#[from] std::str::Utf8Error),
+    #[error("Failed to parse json {0}")]
+    ParseJsonError(#[from] serde_json::error::Error),
 }
 
-#[derive(Debug)]
-pub enum Error {
-    Config(ConfigErrorType),
+#[derive(Debug, Error)]
+pub enum AmqpWrapperError {
+    #[error("Failed to connect to AMQP {0}")]
     Connect(AmqpError),
+    #[error("Failed to create AMQP channel {0}")]
     ChannelCreate(AmqpError),
+    #[error("Failed to create AMQP queue {0}")]
     QueueCreate(AmqpError),
+    #[error("Failed to create AMQP exchange {0}")]
     ExchangeCreate(AmqpError),
-    QueueBind(AmqpError),
+    #[error("Failed to create AMQP consumer {0}")]
     ConsumerCreate(AmqpError),
+    #[error("Failed to bind AMQP exchange to queue {0}")]
+    QueueBind(AmqpError),
+    #[error("Failed to set prefetch AMQP param {0}")]
     PrefetchSet(AmqpError),
-    ParseDelivery(ParseDeliveryErrorType),
+    #[error("Failed to ack {0}")]
     Ack(AmqpError),
+    #[error("Failed to nack {0}")]
     Nack(AmqpError),
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Failed to parse config variable {0}")]
+    Config(#[from] ConfigErrorType),
+    #[error("AMQP error {0}")]
+    Amqp(#[from] AmqpWrapperError),
+    #[error("Failed to parse payload {0}")]
+    ParseDelivery(#[from] ParseDeliveryErrorType),
 }
 
 pub async fn consume(url: &str) -> Result<(), Error> {
@@ -56,12 +82,7 @@ pub async fn consume(url: &str) -> Result<(), Error> {
             continue;
         };
 
-        let string_data = std::str::from_utf8(&delivery.data)
-            .map_err(|err| Error::ParseDelivery(ParseDeliveryErrorType::ParseFromUtf8Error(err)))?;
-
-        info!("Received {}", string_data);
-        let payload = serde_json::from_str::<ScrapMangaRequest>(string_data)
-            .map_err(|err| Error::ParseDelivery(ParseDeliveryErrorType::ParseJsonError(err)));
+        let payload = parse_delivery(delivery);
 
         let processing_result = match payload {
             Ok(value) => process(chrome_max_count, value).await,
@@ -76,7 +97,7 @@ pub async fn consume(url: &str) -> Result<(), Error> {
                 delivery
                     .ack(BasicAckOptions::default())
                     .await
-                    .map_err(Error::Ack)?;
+                    .map_err(|err| Error::Amqp(AmqpWrapperError::Ack(err)))?;
             }
             Err(err) => {
                 delivery
@@ -85,7 +106,7 @@ pub async fn consume(url: &str) -> Result<(), Error> {
                         ..Default::default()
                     })
                     .await
-                    .map_err(Error::Nack)?;
+                    .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
                 error!("{err:#?}");
             }
         };
@@ -94,72 +115,85 @@ pub async fn consume(url: &str) -> Result<(), Error> {
     Ok(())
 }
 
-async fn create_channel(url: &str) -> Result<Channel, Error> {
-    let connect = Connection::connect(url, ConnectionProperties::default())
-        .await
-        .map_err(Error::Connect)?;
-
-    connect.create_channel().await.map_err(Error::ChannelCreate)
+fn parse_delivery_data(data: &[u8]) -> Result<String, ParseDeliveryErrorType> {
+    Ok(std::str::from_utf8(data)?.to_string())
 }
 
-async fn create_queue(channel: &Channel) -> Result<Queue, Error> {
+fn parse_json<T: serde::de::DeserializeOwned>(data: &str) -> Result<T, ParseDeliveryErrorType> {
+    Ok(serde_json::from_str::<T>(data)?)
+}
+
+fn parse_delivery(delivery: Delivery) -> Result<ScrapMangaRequest, ParseDeliveryErrorType> {
+    let string_data = parse_delivery_data(&delivery.data)?;
+    info!("Received {}", string_data);
+
+    Ok(parse_json(&string_data)?)
+}
+
+async fn create_channel(url: &str) -> Result<Channel, AmqpWrapperError> {
+    let connect = Connection::connect(url, ConnectionProperties::default())
+        .await
+        .map_err(AmqpWrapperError::Connect)?;
+
+    connect.create_channel().await.map_err(AmqpWrapperError::ChannelCreate)
+}
+
+async fn create_queue(channel: &Channel) -> Result<Queue, AmqpWrapperError> {
     channel
         .queue_declare(
-            "manga_urls_queue",
+            QUEUE_NAME,
             QueueDeclareOptions::default(),
             FieldTable::default(),
         )
         .await
-        .map_err(Error::QueueCreate)
+        .map_err(AmqpWrapperError::QueueCreate)
 }
 
-async fn create_exchange(channel: &Channel) -> Result<(), Error> {
+async fn create_exchange(channel: &Channel) -> Result<(), AmqpWrapperError> {
     channel
         .exchange_declare(
-            "manga_urls_exchange",
+            EXCHANGE_NAME,
             ExchangeKind::Direct,
             ExchangeDeclareOptions::default(),
             FieldTable::default(),
         )
         .await
-        .map_err(Error::ExchangeCreate)
+        .map_err(AmqpWrapperError::ExchangeCreate)
 }
 
-async fn queue_bind(channel: &Channel) -> Result<(), Error> {
+async fn queue_bind(channel: &Channel) -> Result<(), AmqpWrapperError> {
     channel
         .queue_bind(
-            "manga_urls_queue",
-            "manga_urls_exchange",
+            QUEUE_NAME,
+            EXCHANGE_NAME,
             "",
             QueueBindOptions::default(),
             FieldTable::default(),
         )
         .await
-        .map_err(Error::QueueBind)
+        .map_err(AmqpWrapperError::QueueBind)
 }
 
-async fn create_consumer(channel: &Channel) -> Result<Consumer, Error> {
+async fn create_consumer(channel: &Channel) -> Result<Consumer, AmqpWrapperError> {
     channel
         .basic_consume(
-            "manga_urls_queue",
+            QUEUE_NAME,
             "",
             BasicConsumeOptions::default(),
             FieldTable::default(),
         )
         .await
-        .map_err(Error::ConsumerCreate)
+        .map_err(AmqpWrapperError::ConsumerCreate)
 }
 
-async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), Error> {
+async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), AmqpWrapperError> {
     channel
         .basic_qos(prefetch_count, BasicQosOptions::default())
         .await
-        .map_err(Error::PrefetchSet)
+        .map_err(AmqpWrapperError::PrefetchSet)
 }
 
-fn get_chrome_max_count() -> Result<u16, Error> {
-    env::var("CHROME_MAX_COUNT")
-        .map_err(|err| Error::Config(ConfigErrorType::ParseEnv(err)))?
-        .parse::<u16>()
-        .map_err(|err| Error::Config(ConfigErrorType::ParseInt(err)))
+fn get_chrome_max_count() -> Result<u16, ConfigErrorType> {
+    Ok(env::var("CHROME_MAX_COUNT")?
+        .parse::<u16>()?)
 }
