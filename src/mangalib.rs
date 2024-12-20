@@ -138,7 +138,7 @@ struct Parser {
 }
 
 impl Parser {
-    fn new(url: String, debug_message_prefix: String) -> Self {
+    const fn new(url: String, debug_message_prefix: String) -> Self {
         Self {
             url,
             debug_message_prefix,
