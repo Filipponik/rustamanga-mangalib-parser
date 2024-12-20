@@ -1,5 +1,6 @@
 use crate::{rabbitmq_consumer, send_resource, server};
 use clap::{arg, Command};
+use thiserror::Error;
 
 #[allow(clippy::cognitive_complexity)]
 fn get_settings() -> Command {
@@ -22,12 +23,18 @@ fn get_settings() -> Command {
         ])
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("No such command {0}")]
+    NoSuchCommand(String),
+    #[error("No command specified")]
     NoCommandSpecified,
-    Serve(server::Error),
-    SendResource(send_resource::Error),
-    Consume(rabbitmq_consumer::Error),
+    #[error("Web server error: {0}")]
+    Serve(#[from] server::Error),
+    #[error("Failed to send resources {0}")]
+    SendResource(#[from] send_resource::Error),
+    #[error("Failed to consume rabbitmq queue {0}")]
+    Consume(#[from] rabbitmq_consumer::Error),
 }
 
 pub async fn process_commands() -> Result<(), Error> {
@@ -41,22 +48,19 @@ pub async fn process_commands() -> Result<(), Error> {
             let url = sub_matches.get_one::<String>("url").expect("required");
             consume(url).await
         }
-        _ => Err(Error::NoCommandSpecified),
+        Some((command, _)) => Err(Error::NoSuchCommand(command.to_string())),
+        None => Err(Error::NoCommandSpecified),
     }
 }
 
 async fn serve() -> Result<(), Error> {
-    server::serve().await.map_err(Error::Serve)
+    Ok(server::serve().await?)
 }
 
 async fn send_resource(url: &str) -> Result<(), Error> {
-    send_resource::send_resource(url)
-        .await
-        .map_err(Error::SendResource)
+    Ok(send_resource::send_resource(url).await?)
 }
 
 async fn consume(url: &str) -> Result<(), Error> {
-    rabbitmq_consumer::consume(url)
-        .await
-        .map_err(Error::Consume)
+    Ok(rabbitmq_consumer::consume(url).await?)
 }
