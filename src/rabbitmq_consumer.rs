@@ -64,7 +64,7 @@ pub enum Error {
     ParseDelivery(#[from] ParseDeliveryErrorType),
 }
 
-pub async fn consume(url: &str) -> Result<(), Error> {
+pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
     let channel = create_channel(url).await?;
     create_queue(&channel).await?;
     create_exchange(&channel).await?;
@@ -74,8 +74,6 @@ pub async fn consume(url: &str) -> Result<(), Error> {
     let mut consumer = create_consumer(&channel).await?;
 
     info!("Waiting for jobs");
-
-    let chrome_max_count = get_chrome_max_count()?;
 
     while let Some(delivery) = consumer.next().await {
         let Ok(delivery) = delivery else {
@@ -194,8 +192,4 @@ async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), Amqp
         .basic_qos(prefetch_count, BasicQosOptions::default())
         .await
         .map_err(AmqpWrapperError::PrefetchSet)
-}
-
-fn get_chrome_max_count() -> Result<u16, ConfigErrorType> {
-    Ok(env::var("CHROME_MAX_COUNT")?.parse::<u16>()?)
 }

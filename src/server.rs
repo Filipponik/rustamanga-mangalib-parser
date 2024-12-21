@@ -31,6 +31,7 @@ struct AppConfig {
 }
 
 impl AppConfig {
+    #[allow(dead_code)]
     pub fn from_env() -> Result<Self, ConfigErrorType> {
         let port = env::var("APP_PORT")?.parse::<u16>()?;
         let chrome_max_count = env::var("CHROME_MAX_COUNT")?.parse::<u16>()?;
@@ -39,6 +40,10 @@ impl AppConfig {
             port,
             chrome_max_count,
         })
+    }
+    
+    pub fn new(port: u16, chrome_max_count: u16) -> Self {
+        Self{ port, chrome_max_count }
     }
 
     pub fn address(&self) -> String {
@@ -62,8 +67,8 @@ pub enum Error {
     ServerError(#[from] std::io::Error),
 }
 
-pub async fn serve() -> Result<(), Error> {
-    let config = AppConfig::from_env()?;
+pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
+    let config = AppConfig::new(port, chrome_max_count);
     let state = Arc::new(AppState::new(config));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;

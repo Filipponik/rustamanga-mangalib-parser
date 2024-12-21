@@ -1,3 +1,6 @@
+pub const DEFAULT_APP_PORT: u16 = 8000;
+pub const DEFAULT_CHROME_MAX_COUNT: u16 = 2;
+
 pub fn setup_tracing() {
     dotenv::dotenv().ok();
     tracing_subscriber::fmt()
