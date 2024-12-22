@@ -2,7 +2,10 @@
 
 ## Installing
 
-Clone and install
+1. Install Google Chrome
+2. Install parser
+
+Clone and build
 
 ```shell
 git clone git@github.com:Filipponik/mangalib-parser.git
