@@ -170,8 +170,8 @@ impl Parser {
 
 pub fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Error> {
     let parser = Parser::new(
-        slug.to_owned(),
         format!("https://api.mangalib.me/api/manga/{slug}/chapters"),
+        slug.to_owned(),
     );
 
     let chapter_inner_list = parser.parse::<ChapterInnerList>()?;
