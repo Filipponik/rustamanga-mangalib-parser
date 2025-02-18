@@ -9,6 +9,7 @@ const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleW
 const ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6";
 const PLATFORM: &str = "macOS";
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
+pub const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.mangalib.me";
 
 #[derive(Debug, Error)]
 pub enum Error {
