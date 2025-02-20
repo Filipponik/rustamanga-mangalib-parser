@@ -123,7 +123,8 @@ struct ChapterInner {
     name: Option<String>,
 }
 
-pub struct Mangalib;
+pub struct MangalibImpl;
+pub trait Mangalib;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ChapterInnerList {
