@@ -63,29 +63,6 @@ fn get_browser() -> Result<Browser, Error> {
     Browser::new(options).map_err(|err| Error::BrowserCreate(err.to_string()))
 }
 
-pub fn get_manga_chapter_images(
-    slug: &str,
-    manga_chapter: &MangaChapter,
-) -> Result<Vec<String>, Error> {
-    let parser = Parser::new(
-        format!(
-            "https://api.mangalib.me/api/manga/{slug}/chapter?number={}&volume={}",
-            manga_chapter.chapter_number, manga_chapter.chapter_volume
-        ),
-        "Searching manga chapter urls".to_owned(),
-    );
-
-    let image_inner_list = parser.parse::<ImageInnerList>()?;
-    let images = image_inner_list
-        .data
-        .pages
-        .into_iter()
-        .map(|item| format!("{IMAGE_SERVER_PREFIX}{}", item.url))
-        .collect();
-
-    Ok(images)
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MangaPreview {
     manga_type: String,
@@ -124,7 +101,63 @@ struct ChapterInner {
 }
 
 pub struct MangalibImpl;
-pub trait Mangalib;
+
+impl MangalibImpl {
+    pub fn new() -> Self {
+        MangalibImpl
+    }
+}
+
+impl Mangalib for MangalibImpl {
+    fn get_manga_chapter_images(&self, slug: &str, manga_chapter: &MangaChapter) -> Result<Vec<String>, Error> {
+        let parser = Parser::new(
+            format!(
+                "https://api.mangalib.me/api/manga/{slug}/chapter?number={}&volume={}",
+                manga_chapter.chapter_number, manga_chapter.chapter_volume
+            ),
+            "Searching manga chapter urls".to_owned(),
+        );
+
+        let image_inner_list = parser.parse::<ImageInnerList>()?;
+        let images = image_inner_list
+            .data
+            .pages
+            .into_iter()
+            .map(|item| format!("{IMAGE_SERVER_PREFIX}{}", item.url))
+            .collect();
+
+        Ok(images)
+    }
+
+    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
+        let parser = Parser::new(
+            format!("https://api.mangalib.me/api/manga/{slug}/chapters"),
+            slug.to_owned(),
+        );
+
+        let chapter_inner_list = parser.parse::<ChapterInnerList>()?;
+        let chapters = chapter_inner_list
+            .data
+            .into_iter()
+            .map(|chapter_inner| MangaChapter::new(chapter_inner.volume, chapter_inner.number))
+            .collect();
+
+        Ok(chapters)
+    }
+}
+
+pub trait Mangalib {
+    fn get_manga_chapter_images(
+        &self,
+        slug: &str,
+        manga_chapter: &MangaChapter,
+    ) -> Result<Vec<String>, Error>;
+
+    fn get_manga_chapters(
+        &self,
+        slug: &str
+    ) -> Result<Vec<MangaChapter>, Error>;
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ChapterInnerList {
@@ -170,22 +203,6 @@ impl Parser {
 
         Ok(serde_json::from_str(&text)?)
     }
-}
-
-pub fn get_manga_chapters(slug: &str) -> Result<Vec<MangaChapter>, Error> {
-    let parser = Parser::new(
-        format!("https://api.mangalib.me/api/manga/{slug}/chapters"),
-        slug.to_owned(),
-    );
-
-    let chapter_inner_list = parser.parse::<ChapterInnerList>()?;
-    let chapters = chapter_inner_list
-        .data
-        .into_iter()
-        .map(|chapter_inner| MangaChapter::new(chapter_inner.volume, chapter_inner.number))
-        .collect();
-
-    Ok(chapters)
 }
 
 fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
