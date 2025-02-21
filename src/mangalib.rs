@@ -109,7 +109,11 @@ impl MangalibImpl {
 }
 
 impl Mangalib for MangalibImpl {
-    fn get_manga_chapter_images(&self, slug: &str, manga_chapter: &MangaChapter) -> Result<Vec<String>, Error> {
+    fn get_manga_chapter_images(
+        &self,
+        slug: &str,
+        manga_chapter: &MangaChapter,
+    ) -> Result<Vec<String>, Error> {
         let parser = Parser::new(
             format!(
                 "https://api.mangalib.me/api/manga/{slug}/chapter?number={}&volume={}",
@@ -153,10 +157,7 @@ pub trait Mangalib {
         manga_chapter: &MangaChapter,
     ) -> Result<Vec<String>, Error>;
 
-    fn get_manga_chapters(
-        &self,
-        slug: &str
-    ) -> Result<Vec<MangaChapter>, Error>;
+    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
