@@ -76,7 +76,9 @@ async fn get_manga_urls(
 ) -> Result<PublishedManga, Error> {
     let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
-    let chapters = mangalib::HeadlessBrowserClient::builder().build().get_manga_chapters(&dto.slug)?;
+    let chapters = mangalib::HeadlessBrowserClient::builder()
+        .build()
+        .get_manga_chapters(&dto.slug)?;
     let chapters = match filter_chapters(chapters, dto) {
         None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
         Some(c) => c,
@@ -88,8 +90,9 @@ async fn get_manga_urls(
         let semaphore = semaphore.clone();
         tokio::try_join!(async move {
             let _permit = semaphore.acquire().await?;
-            let result =
-                retry!(mangalib::HeadlessBrowserClient::builder().build().get_manga_chapter_images(&slug, &chapter))?;
+            let result = retry!(mangalib::HeadlessBrowserClient::builder()
+                .build()
+                .get_manga_chapter_images(&slug, chapter))?;
             urls.lock()
                 .map_err(|_| Error::MutexLock)?
                 .insert(chapter.clone(), result);

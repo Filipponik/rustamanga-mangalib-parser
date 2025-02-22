@@ -39,7 +39,7 @@ impl AppConfig {
         Ok(Self::new(port, chrome_max_count))
     }
 
-    pub fn new(port: u16, chrome_max_count: u16) -> Self {
+    pub const fn new(port: u16, chrome_max_count: u16) -> Self {
         Self {
             port,
             chrome_max_count,
