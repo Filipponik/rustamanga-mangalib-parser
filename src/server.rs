@@ -1,4 +1,3 @@
-use crate::mangalib::MANGALIB_DEFAULT_BASE_URL;
 use crate::processing;
 use crate::processing::ScrapMangaRequest;
 use axum::extract::{OriginalUri, State};
@@ -29,7 +28,6 @@ impl AppState {
 struct AppConfig {
     port: u16,
     chrome_max_count: u16,
-    mangalib_base_url: String,
 }
 
 impl AppConfig {
@@ -37,17 +35,14 @@ impl AppConfig {
     pub fn from_env() -> Result<Self, ConfigErrorType> {
         let port = env::var("APP_PORT")?.parse::<u16>()?;
         let chrome_max_count = env::var("CHROME_MAX_COUNT")?.parse::<u16>()?;
-        let mangalib_base_url =
-            env::var("MANGALIB_BASE_URL").unwrap_or(MANGALIB_DEFAULT_BASE_URL.to_string());
 
-        Ok(Self::new(port, chrome_max_count, mangalib_base_url))
+        Ok(Self::new(port, chrome_max_count))
     }
 
-    pub fn new(port: u16, chrome_max_count: u16, mangalib_base_url: String) -> Self {
+    pub fn new(port: u16, chrome_max_count: u16) -> Self {
         Self {
             port,
             chrome_max_count,
-            mangalib_base_url,
         }
     }
 
@@ -73,7 +68,7 @@ pub enum Error {
 }
 
 pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
-    let config = AppConfig::from_env()?;
+    let config = AppConfig::new(port, chrome_max_count);
     let state = Arc::new(AppState::new(config));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;
