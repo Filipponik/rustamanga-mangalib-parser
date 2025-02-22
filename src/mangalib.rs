@@ -1,15 +1,13 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
+
+mod builder;
+
 use headless_chrome::{Browser, LaunchOptions};
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use tracing::debug;
-
-const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
-const ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6";
-const PLATFORM: &str = "macOS";
-const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
-pub const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.mangalib.me";
+use crate::mangalib::builder::Builder;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -54,15 +52,6 @@ struct ImageInner {
     ratio: String,
 }
 
-fn get_browser() -> Result<Browser, Error> {
-    let options = LaunchOptions::default_builder()
-        .sandbox(false)
-        .build()
-        .map_err(|err| Error::BrowserCreateBuilder(err.to_string()))?;
-
-    Browser::new(options).map_err(|err| Error::BrowserCreate(err.to_string()))
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MangaPreview {
     manga_type: String,
@@ -100,98 +89,32 @@ struct ChapterInner {
     name: Option<String>,
 }
 
-pub struct MangalibImpl;
-
-impl MangalibImpl {
-    pub fn new() -> Self {
-        MangalibImpl
-    }
+pub struct HeadlessBrowserClient {
+    user_agent: String,
+    accept_language: String,
+    platform: String,
+    image_server_prefix: String,
+    base_url: String,
 }
 
-impl Mangalib for MangalibImpl {
-    fn get_manga_chapter_images(
-        &self,
-        slug: &str,
-        manga_chapter: &MangaChapter,
-    ) -> Result<Vec<String>, Error> {
-        let parser = Parser::new(
-            format!(
-                "https://api.mangalib.me/api/manga/{slug}/chapter?number={}&volume={}",
-                manga_chapter.chapter_number, manga_chapter.chapter_volume
-            ),
-            "Searching manga chapter urls".to_owned(),
-        );
-
-        let image_inner_list = parser.parse::<ImageInnerList>()?;
-        let images = image_inner_list
-            .data
-            .pages
-            .into_iter()
-            .map(|item| format!("{IMAGE_SERVER_PREFIX}{}", item.url))
-            .collect();
-
-        Ok(images)
+impl HeadlessBrowserClient {
+    pub fn builder() -> Builder {
+        Builder::new()
     }
 
-    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
-        let parser = Parser::new(
-            format!("https://api.mangalib.me/api/manga/{slug}/chapters"),
-            slug.to_owned(),
-        );
-
-        let chapter_inner_list = parser.parse::<ChapterInnerList>()?;
-        let chapters = chapter_inner_list
-            .data
-            .into_iter()
-            .map(|chapter_inner| MangaChapter::new(chapter_inner.volume, chapter_inner.number))
-            .collect();
-
-        Ok(chapters)
-    }
-}
-
-pub trait Mangalib {
-    fn get_manga_chapter_images(
-        &self,
-        slug: &str,
-        manga_chapter: &MangaChapter,
-    ) -> Result<Vec<String>, Error>;
-
-    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChapterInnerList {
-    data: Vec<ChapterInner>,
-}
-
-struct Parser {
-    url: String,
-    debug_message_prefix: String,
-}
-
-impl Parser {
-    const fn new(url: String, debug_message_prefix: String) -> Self {
-        Self {
-            url,
-            debug_message_prefix,
-        }
-    }
-
-    fn parse<T>(&self) -> Result<T, Error>
+    fn parse<T>(&self, url: &str, debug_message_prefix: &str) -> Result<T, Error>
     where
         T: for<'de> Deserialize<'de>,
     {
-        let web_url = &self.url;
-        let browser = get_browser()?;
+        let browser = self.get_browser()?;
         let tab = browser
             .new_tab()
             .map_err(|err| Error::BrowserTabCreate(err.to_string()))?;
-        debug!("{} {web_url}", &self.debug_message_prefix);
+        debug!("{} {url}", &debug_message_prefix);
 
-        tab.set_user_agent(USER_AGENT, Some(ACCEPT_LANGUAGE), Some(PLATFORM))
+        tab.set_user_agent(&self.user_agent, Some(&self.accept_language), Some(&self.platform))
             .map_err(|err| Error::SetUserAgent(err.to_string()))?;
-        tab.navigate_to(web_url)
+        tab.navigate_to(url)
             .map_err(|err| Error::BrowserNavigate(err.to_string()))?
             .wait_until_navigated()
             .map_err(|err| Error::BrowserWaitNavigateTooLong(err.to_string()))?;
@@ -204,6 +127,70 @@ impl Parser {
 
         Ok(serde_json::from_str(&text)?)
     }
+
+    fn get_browser(&self) -> Result<Browser, Error> {
+        let options = LaunchOptions::default_builder()
+            .sandbox(false)
+            .build()
+            .map_err(|err| Error::BrowserCreateBuilder(err.to_string()))?;
+
+        Browser::new(options).map_err(|err| Error::BrowserCreate(err.to_string()))
+    }
+}
+
+impl Client for HeadlessBrowserClient {
+    fn get_manga_chapter_images(
+        &self,
+        slug: &str,
+        manga_chapter: &MangaChapter,
+    ) -> Result<Vec<String>, Error> {
+        let image_inner_list: ImageInnerList = self.parse(
+            &format!(
+                "{}/api/manga/{slug}/chapter?number={}&volume={}",
+                self.base_url, manga_chapter.chapter_number, manga_chapter.chapter_volume
+            ),
+            "Searching manga chapter urls",
+        )?;
+
+        let images = image_inner_list
+            .data
+            .pages
+            .into_iter()
+            .map(|item| format!("{}{}", self.image_server_prefix, item.url))
+            .collect();
+
+        Ok(images)
+    }
+
+    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
+        let chapter_inner_list: ChapterInnerList = self.parse(
+            &format!("{}/api/manga/{slug}/chapters", self.base_url),
+            slug,
+        )?;
+
+        let chapters = chapter_inner_list
+            .data
+            .into_iter()
+            .map(|chapter_inner| MangaChapter::new(chapter_inner.volume, chapter_inner.number))
+            .collect();
+
+        Ok(chapters)
+    }
+}
+
+pub trait Client {
+    fn get_manga_chapter_images(
+        &self,
+        slug: &str,
+        manga_chapter: &MangaChapter,
+    ) -> Result<Vec<String>, Error>;
+
+    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ChapterInnerList {
+    data: Vec<ChapterInner>,
 }
 
 fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>

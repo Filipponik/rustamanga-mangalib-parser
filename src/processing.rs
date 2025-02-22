@@ -1,5 +1,5 @@
 use crate::mangalib;
-use crate::mangalib::Mangalib;
+use crate::mangalib::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -76,7 +76,7 @@ async fn get_manga_urls(
 ) -> Result<PublishedManga, Error> {
     let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
-    let chapters = mangalib::MangalibImpl::new().get_manga_chapters(&dto.slug)?;
+    let chapters = mangalib::HeadlessBrowserClient::builder().build().get_manga_chapters(&dto.slug)?;
     let chapters = match filter_chapters(chapters, dto) {
         None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
         Some(c) => c,
@@ -89,7 +89,7 @@ async fn get_manga_urls(
         tokio::try_join!(async move {
             let _permit = semaphore.acquire().await?;
             let result =
-                retry!(mangalib::MangalibImpl::new().get_manga_chapter_images(&slug, &chapter))?;
+                retry!(mangalib::HeadlessBrowserClient::builder().build().get_manga_chapter_images(&slug, &chapter))?;
             urls.lock()
                 .map_err(|_| Error::MutexLock)?
                 .insert(chapter.clone(), result);
