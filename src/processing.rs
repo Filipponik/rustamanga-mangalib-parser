@@ -1,11 +1,11 @@
 use crate::mangalib;
+use crate::mangalib::Mangalib;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tokio::sync::{AcquireError, Semaphore};
 use tracing::{error, info};
-use crate::mangalib::Mangalib;
 
 macro_rules! retry {
     ($f:expr, $count:expr) => {{
@@ -29,13 +29,9 @@ pub enum Error {
     #[error("Mangalib error: {0}")]
     Mangalib(#[from] mangalib::Error),
     #[error("Chapter not found")]
-    ChapterNotFound {
-        chapter: mangalib::MangaChapter
-    },
+    ChapterNotFound { chapter: mangalib::MangaChapter },
     #[error("Chapter not found for filter, {dto:?}")]
-    ChapterNotFoundForFilter {
-        dto: MangaScrappingParamsDto
-    },
+    ChapterNotFoundForFilter { dto: MangaScrappingParamsDto },
     #[error("Can't get mutex lock")]
     MutexLock,
     #[error("Semaphore acquire error: {0}")]
@@ -92,7 +88,8 @@ async fn get_manga_urls(
         let semaphore = semaphore.clone();
         tokio::try_join!(async move {
             let _permit = semaphore.acquire().await?;
-            let result = retry!(mangalib::MangalibImpl::new().get_manga_chapter_images(&slug, &chapter))?;
+            let result =
+                retry!(mangalib::MangalibImpl::new().get_manga_chapter_images(&slug, &chapter))?;
             urls.lock()
                 .map_err(|_| Error::MutexLock)?
                 .insert(chapter.clone(), result);
@@ -147,7 +144,9 @@ fn prepare_manga_for_publish(
     let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
     for chapter in chapters {
         let Some(url_images) = chapter_urls_map.get(chapter) else {
-            return Err(Error::ChapterNotFound { chapter: chapter.clone() });
+            return Err(Error::ChapterNotFound {
+                chapter: chapter.clone(),
+            });
         };
 
         telegraph_urls.push(PublishedMangaChapter {

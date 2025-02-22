@@ -56,7 +56,7 @@ pub async fn process_commands() -> Result<(), Error> {
                 .unwrap_or(config::DEFAULT_CHROME_MAX_COUNT);
 
             serve(port, chrome_max_count).await
-        },
+        }
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
             send_resource(url).await

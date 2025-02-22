@@ -1,3 +1,4 @@
+use crate::mangalib::MANGALIB_DEFAULT_BASE_URL;
 use crate::processing;
 use crate::processing::ScrapMangaRequest;
 use axum::extract::{OriginalUri, State};
@@ -10,7 +11,6 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tracing::{error, info};
-use crate::mangalib::MANGALIB_DEFAULT_BASE_URL;
 
 const SCRAP_MANGA_ROUTE: &str = "/scrap-manga";
 
@@ -37,13 +37,18 @@ impl AppConfig {
     pub fn from_env() -> Result<Self, ConfigErrorType> {
         let port = env::var("APP_PORT")?.parse::<u16>()?;
         let chrome_max_count = env::var("CHROME_MAX_COUNT")?.parse::<u16>()?;
-        let mangalib_base_url = env::var("MANGALIB_BASE_URL").unwrap_or(MANGALIB_DEFAULT_BASE_URL.to_string());
+        let mangalib_base_url =
+            env::var("MANGALIB_BASE_URL").unwrap_or(MANGALIB_DEFAULT_BASE_URL.to_string());
 
         Ok(Self::new(port, chrome_max_count, mangalib_base_url))
     }
-    
+
     pub fn new(port: u16, chrome_max_count: u16, mangalib_base_url: String) -> Self {
-        Self{ port, chrome_max_count, mangalib_base_url }
+        Self {
+            port,
+            chrome_max_count,
+            mangalib_base_url,
+        }
     }
 
     pub fn address(&self) -> String {
