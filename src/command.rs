@@ -45,17 +45,13 @@ pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", sub_matches)) => {
             let port = sub_matches
-                .get_one::<String>("port")
-                .unwrap_or(&config::DEFAULT_APP_PORT.to_string())
-                .parse::<u16>()
-                .unwrap_or(config::DEFAULT_APP_PORT);
+                .get_one::<u16>("port")
+                .unwrap_or(&config::DEFAULT_APP_PORT);
             let chrome_max_count = sub_matches
-                .get_one::<String>("browsers")
-                .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT.to_string())
-                .parse::<u16>()
-                .unwrap_or(config::DEFAULT_CHROME_MAX_COUNT);
+                .get_one::<u16>("browsers")
+                .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT);
 
-            serve(port, chrome_max_count).await
+            serve(*port, *chrome_max_count).await
         }
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
@@ -64,12 +60,10 @@ pub async fn process_commands() -> Result<(), Error> {
         Some(("consume", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
             let chrome_max_count = sub_matches
-                .get_one::<String>("browsers")
-                .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT.to_string())
-                .parse::<u16>()
-                .unwrap_or(config::DEFAULT_CHROME_MAX_COUNT);
+                .get_one::<u16>("browsers")
+                .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT);
 
-            consume(url, chrome_max_count).await
+            consume(url, *chrome_max_count).await
         }
         Some((command, _)) => Err(Error::NoSuchCommand(command.to_string())),
         None => Err(Error::NoCommandSpecified),
