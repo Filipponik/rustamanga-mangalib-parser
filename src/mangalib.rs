@@ -3,11 +3,11 @@
 
 mod builder;
 
+use crate::mangalib::builder::Builder;
 use headless_chrome::{Browser, LaunchOptions};
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use tracing::debug;
-use crate::mangalib::builder::Builder;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -99,21 +99,25 @@ pub struct HeadlessBrowserClient {
 
 impl HeadlessBrowserClient {
     pub fn builder() -> Builder {
-        Builder::new()
+        Builder::default()
     }
 
     fn parse<T>(&self, url: &str, debug_message_prefix: &str) -> Result<T, Error>
     where
         T: for<'de> Deserialize<'de>,
     {
-        let browser = self.get_browser()?;
+        let browser = Self::get_browser()?;
         let tab = browser
             .new_tab()
             .map_err(|err| Error::BrowserTabCreate(err.to_string()))?;
         debug!("{} {url}", &debug_message_prefix);
 
-        tab.set_user_agent(&self.user_agent, Some(&self.accept_language), Some(&self.platform))
-            .map_err(|err| Error::SetUserAgent(err.to_string()))?;
+        tab.set_user_agent(
+            &self.user_agent,
+            Some(&self.accept_language),
+            Some(&self.platform),
+        )
+        .map_err(|err| Error::SetUserAgent(err.to_string()))?;
         tab.navigate_to(url)
             .map_err(|err| Error::BrowserNavigate(err.to_string()))?
             .wait_until_navigated()
@@ -128,7 +132,7 @@ impl HeadlessBrowserClient {
         Ok(serde_json::from_str(&text)?)
     }
 
-    fn get_browser(&self) -> Result<Browser, Error> {
+    fn get_browser() -> Result<Browser, Error> {
         let options = LaunchOptions::default_builder()
             .sandbox(false)
             .build()
