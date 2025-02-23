@@ -11,8 +11,8 @@ categories = ["web-programming", "web-programming::http-server", "command-line-i
 
 [profile.release]
 strip = true
-opt-level = "s"
-lto = true
+opt-level = "z"
+lto = "fat"
 codegen-units = 1
 panic = "abort"
 
