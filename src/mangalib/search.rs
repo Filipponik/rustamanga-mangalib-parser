@@ -123,15 +123,24 @@ pub async fn get() -> Vec<MangaPreview> {
         site_ids: vec![1],
     };
 
-    let res_text = client.get("https://api.lib.social/api/manga")
+    send(&client, &query).await
+}
+
+async fn send(client: &reqwest::Client, query: &Query) -> Vec<MangaPreview> {
+    client.get("https://api.lib.social/api/manga")
         .query(&query.to_reqwest_format().as_slice())
         .send()
         .await
         .unwrap()
-        .text()
+        .json::<response::Response>()
         .await
-        .unwrap();
-
-    serde_json::from_str::<response::Response>(&res_text).unwrap().into()
+        .unwrap()
+        .into()
 }
 
+fn send_sync(client: &reqwest::Client, query: &Query) -> Vec<MangaPreview> {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        send(&client, &query).await
+    })
+}
