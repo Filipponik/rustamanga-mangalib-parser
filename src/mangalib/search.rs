@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
 use crate::mangalib::MangaPreview;
+use serde::{Deserialize, Serialize};
 
 mod response {
-    use serde::Deserialize;
     use crate::mangalib::MangaPreview;
+    use serde::Deserialize;
 
     #[derive(Debug, Deserialize)]
     pub struct Response {
@@ -100,6 +100,7 @@ mod response {
 struct Query {
     fields: Vec<String>,
     site_ids: Vec<u32>,
+    page: u32,
 }
 
 impl Query {
@@ -112,16 +113,23 @@ impl Query {
             formatted.push(("site_id[]".to_string(), site_id.to_string()));
         }
 
+        formatted.push(("page".to_string(), self.page.to_string()));
+
         formatted
+    }
+
+    fn new_only_page(page: u32) -> Self {
+        Self {
+            fields: vec!["rate".to_string(), "rate_avg".to_string(), "userBookmark".to_string()],
+            site_ids: vec![1],
+            page,
+        }
     }
 }
 
 pub async fn get() -> Vec<MangaPreview> {
     let client = reqwest::Client::new();
-    let query = Query {
-        fields: vec!["rate".to_string(), "rate_avg".to_string(), "userBookmark".to_string()],
-        site_ids: vec![1],
-    };
+    let query = Query::new_only_page(1);
 
     send(&client, &query).await
 }
@@ -143,4 +151,39 @@ fn send_sync(client: &reqwest::Client, query: &Query) -> Vec<MangaPreview> {
     rt.block_on(async {
         send(&client, &query).await
     })
+}
+
+struct GetAllMangaIterator {
+    current_page: u32,
+    current_vec: Vec<MangaPreview>,
+    current_index: usize,
+    client: reqwest::Client,
+}
+
+impl GetAllMangaIterator {
+    fn new(client: Option<reqwest::Client>) -> Self {
+        Self {
+            current_page: 0,
+            current_vec: vec![],
+            current_index: 0,
+            client: client.unwrap_or_else(|| reqwest::Client::new()),
+        }
+    }
+}
+
+impl Iterator for GetAllMangaIterator {
+    type Item = MangaPreview;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_vec.get(self.current_index).is_none() {
+            self.current_page += 1;
+            self.current_vec = send_sync(&self.client, &Query::new_only_page(self.current_page));
+            self.current_index = 0;
+        }
+
+        let res = self.current_vec.get(self.current_index).cloned();
+        self.current_index += 1;
+
+        res
+    }
 }

@@ -53,7 +53,7 @@ struct ImageInner {
     ratio: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MangaPreview {
     manga_type: String,
     name: String,
