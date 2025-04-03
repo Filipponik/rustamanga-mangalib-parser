@@ -1,5 +1,7 @@
 use crate::mangalib::MangaPreview;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tracing::{debug, error, info};
 
 mod response {
     use crate::mangalib::MangaPreview;
@@ -127,33 +129,69 @@ impl Query {
     }
 }
 
-pub async fn get() -> Vec<MangaPreview> {
-    let client = reqwest::Client::new();
-    let query = Query::new_only_page(1);
-
-    send(&client, &query).await
+#[derive(Debug, Error)]
+pub enum SendingError {
+    #[error("Request error: {0}")]
+    Request(#[from] reqwest::Error),
+    #[error("Deserialize error: {0}")]
+    Deserialize(reqwest::Error),
+    #[error("Runtime create error: {0}")]
+    RuntimeCreate(#[from] std::io::Error),
 }
 
-async fn send(client: &reqwest::Client, query: &Query) -> Vec<MangaPreview> {
-    client.get("https://api.lib.social/api/manga")
+async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SendingError> {
+    debug!("Requesting {} page", query.page);
+
+    let response = client.get("https://api.lib.social/api/manga")
         .query(&query.to_reqwest_format().as_slice())
         .send()
-        .await
-        .unwrap()
+        .await;
+
+    let response = match response {
+        Ok(response) => {
+            info!("Success requesting manga at page {}", query.page);
+            debug!("Response: {response:?}");
+
+            Ok(response)
+        }
+        Err(err) => {
+            error!("Error while requesting manga at page {}", query.page);
+
+            Err(err)
+        }
+    }?;
+
+    debug!("Parsing page {}", query.page);
+    let response = response
         .json::<response::Response>()
-        .await
-        .unwrap()
-        .into()
+        .await;
+
+    match response {
+        Ok(value) => {
+            info!("Success parsing manga at page {}", query.page);
+
+            Ok(value.into())
+        }
+        Err(err) => {
+            error!("Error while parsing manga at page {}", query.page);
+
+            Err(SendingError::Deserialize(err))
+        }
+    }
 }
 
-fn send_sync(client: &reqwest::Client, query: &Query) -> Vec<MangaPreview> {
+fn send_sync(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SendingError> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         send(&client, &query).await
     })
 }
 
-struct GetAllMangaIterator {
+pub fn get_manga_iter() -> GetAllMangaIterator {
+    GetAllMangaIterator::new(None)
+}
+
+pub struct GetAllMangaIterator {
     current_page: u32,
     current_vec: Vec<MangaPreview>,
     current_index: usize,
@@ -177,7 +215,8 @@ impl Iterator for GetAllMangaIterator {
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_vec.get(self.current_index).is_none() {
             self.current_page += 1;
-            self.current_vec = send_sync(&self.client, &Query::new_only_page(self.current_page));
+            let request_result = send_sync(&self.client, &Query::new_only_page(self.current_page));
+            self.current_vec = if let Ok(r) = request_result { r } else { return None };
             self.current_index = 0;
         }
 
