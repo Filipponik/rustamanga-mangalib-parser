@@ -90,9 +90,11 @@ async fn get_manga_urls(
         let semaphore = semaphore.clone();
         tokio::try_join!(async move {
             let _permit = semaphore.acquire().await?;
-            let result = retry!(mangalib::HeadlessBrowserClient::builder()
-                .build()
-                .get_manga_chapter_images(&slug, chapter))?;
+            let result = retry!(
+                mangalib::HeadlessBrowserClient::builder()
+                    .build()
+                    .get_manga_chapter_images(&slug, chapter)
+            )?;
             urls.lock()
                 .map_err(|_| Error::MutexLock)?
                 .insert(chapter.clone(), result);

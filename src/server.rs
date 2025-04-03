@@ -4,7 +4,7 @@ use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
 use axum::routing::post;
 use axum::{Json, Router};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::env;
 use std::sync::Arc;
 use thiserror::Error;

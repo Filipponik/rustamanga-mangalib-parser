@@ -1,8 +1,8 @@
+use crate::mangalib::MangaPreview;
 use reqwest::Client;
 use thiserror::Error;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
-use crate::mangalib::MangaPreview;
 
 const MANGALIB_STATIC_RESOURCE: &str = include_str!("../resource/json/mangalib_manga_list.json");
 

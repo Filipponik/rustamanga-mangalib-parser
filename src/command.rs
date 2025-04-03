@@ -1,10 +1,10 @@
+use crate::mangalib::MangaPreview;
 use crate::{config, mangalib, rabbitmq_consumer, send_resource, server};
-use clap::{arg, Command};
+use clap::{Command, arg};
+use futures::StreamExt;
 use thiserror::Error;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use crate::mangalib::MangaPreview;
-use futures::StreamExt;
 
 #[allow(clippy::cognitive_complexity)]
 fn get_settings() -> Command {
@@ -23,8 +23,7 @@ fn get_settings() -> Command {
                 .about("Send start static resource")
                 .arg(arg!(--url <URL> "URL where we should send this resource"))
                 .arg_required_else_help(true),
-            Command::new("collect-resource-full")
-                .about("Collect current resource to json"),
+            Command::new("collect-resource-full").about("Collect current resource to json"),
             Command::new("consume")
                 .about("Consume RabbitMQ queue")
                 .arg(arg!(--url <URL> "AMQP URI"))
@@ -74,8 +73,12 @@ pub async fn process_commands() -> Result<(), Error> {
         Some(("collect-resource-full", _sub_matches)) => {
             let iter = mangalib::search::get_manga_iter();
             let output = iter.collect::<Vec<MangaPreview>>().await;
-            let mut file = File::create("resource/json/mangalib_manga_list.json").await.unwrap();
-            file.write_all(serde_json::to_string(&output).unwrap().as_bytes()).await.unwrap();
+            let mut file = File::create("resource/json/mangalib_manga_list.json")
+                .await
+                .unwrap();
+            file.write_all(serde_json::to_string(&output).unwrap().as_bytes())
+                .await
+                .unwrap();
 
             Ok(())
         }

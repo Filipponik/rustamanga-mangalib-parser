@@ -1,4 +1,4 @@
-use crate::processing::{process, ScrapMangaRequest};
+use crate::processing::{ScrapMangaRequest, process};
 use futures::StreamExt;
 use lapin::message::Delivery;
 use lapin::options::{

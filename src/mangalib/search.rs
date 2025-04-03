@@ -1,9 +1,9 @@
-use std::num::NonZeroU32;
+use crate::mangalib::MangaPreview;
 use async_stream::stream;
 use futures::Stream;
-use governor::{DefaultDirectRateLimiter, DefaultKeyedRateLimiter, Quota, RateLimiter};
-use crate::mangalib::MangaPreview;
-use serde::{Deserialize, Serialize};
+use governor::{DefaultKeyedRateLimiter, Quota};
+use serde::Serialize;
+use std::num::NonZeroU32;
 use thiserror::Error;
 use tracing::{debug, error, info};
 
@@ -87,7 +87,9 @@ mod response {
         fn into(self) -> MangaPreview {
             MangaPreview {
                 manga_type: self.r#type.label,
-                name: self.rus_name.unwrap_or_else(|| self.eng_name.unwrap_or(self.name)),
+                name: self
+                    .rus_name
+                    .unwrap_or_else(|| self.eng_name.unwrap_or(self.name)),
                 url: format!("https://mangalib.me/{}", self.slug_url),
                 slug: self.slug,
                 image_url: self.cover.default,
@@ -126,7 +128,11 @@ impl Query {
 
     fn new_only_page(page: u32) -> Self {
         Self {
-            fields: vec!["rate".to_string(), "rate_avg".to_string(), "userBookmark".to_string()],
+            fields: vec![
+                "rate".to_string(),
+                "rate_avg".to_string(),
+                "userBookmark".to_string(),
+            ],
             site_ids: vec![1],
             page,
         }
@@ -146,7 +152,8 @@ pub enum SendingError {
 async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SendingError> {
     debug!("Requesting {} page", query.page);
 
-    let response = client.get("https://api.lib.social/api/manga")
+    let response = client
+        .get("https://api.lib.social/api/manga")
         .query(&query.to_reqwest_format().as_slice())
         .send()
         .await;
@@ -166,9 +173,7 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
     }?;
 
     debug!("Parsing page {}", query.page);
-    let response = response
-        .json::<response::Response>()
-        .await;
+    let response = response.json::<response::Response>().await;
 
     match response {
         Ok(value) => {
@@ -177,7 +182,10 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
             Ok(value.into())
         }
         Err(err) => {
-            error!("Error while parsing manga at page {}: {:?}", query.page, err);
+            error!(
+                "Error while parsing manga at page {}: {:?}",
+                query.page, err
+            );
 
             Err(SendingError::Deserialize(err))
         }
