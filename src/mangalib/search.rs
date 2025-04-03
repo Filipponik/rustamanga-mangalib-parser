@@ -1,3 +1,7 @@
+use std::num::NonZeroU32;
+use async_stream::stream;
+use futures::Stream;
+use governor::{DefaultDirectRateLimiter, DefaultKeyedRateLimiter, Quota, RateLimiter};
 use crate::mangalib::MangaPreview;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -17,8 +21,8 @@ mod response {
     struct Manga {
         id: u32,
         name: String,
-        rus_name: String,
-        eng_name: String,
+        rus_name: Option<String>,
+        eng_name: Option<String>,
         slug: String,
         slug_url: String,
         model: String,
@@ -33,7 +37,7 @@ mod response {
 
     #[derive(Debug, Deserialize)]
     struct Images {
-        filename: String,
+        filename: Option<String>,
         thumbnail: String,
         default: String,
         md: String,
@@ -83,7 +87,7 @@ mod response {
         fn into(self) -> MangaPreview {
             MangaPreview {
                 manga_type: self.r#type.label,
-                name: self.rus_name,
+                name: self.rus_name.unwrap_or_else(|| self.eng_name.unwrap_or(self.name)),
                 url: format!("https://mangalib.me/{}", self.slug_url),
                 slug: self.slug,
                 image_url: self.cover.default,
@@ -173,56 +177,35 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
             Ok(value.into())
         }
         Err(err) => {
-            error!("Error while parsing manga at page {}", query.page);
+            error!("Error while parsing manga at page {}: {:?}", query.page, err);
 
             Err(SendingError::Deserialize(err))
         }
     }
 }
 
-fn send_sync(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SendingError> {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        send(&client, &query).await
-    })
-}
+pub fn get_manga_iter() -> impl Stream<Item = MangaPreview> {
+    stream! {
+        let quota = Quota::per_minute(NonZeroU32::new(30).unwrap());
+        let rate_limiter = DefaultKeyedRateLimiter::keyed(quota);
+        let client = reqwest::Client::new();
 
-pub fn get_manga_iter() -> GetAllMangaIterator {
-    GetAllMangaIterator::new(None)
-}
+        let mut page_num = 1;
+        loop {
+            rate_limiter.until_key_ready(&"default").await;
+            if let Ok(page) = send(&client, &Query::new_only_page(page_num)).await {
+                if page.is_empty() {
+                    break;
+                }
 
-pub struct GetAllMangaIterator {
-    current_page: u32,
-    current_vec: Vec<MangaPreview>,
-    current_index: usize,
-    client: reqwest::Client,
-}
+                for manga in page {
+                    yield manga;
+                }
 
-impl GetAllMangaIterator {
-    fn new(client: Option<reqwest::Client>) -> Self {
-        Self {
-            current_page: 0,
-            current_vec: vec![],
-            current_index: 0,
-            client: client.unwrap_or_else(|| reqwest::Client::new()),
+                page_num += 1;
+            } else {
+                break;
+            }
         }
-    }
-}
-
-impl Iterator for GetAllMangaIterator {
-    type Item = MangaPreview;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current_vec.get(self.current_index).is_none() {
-            self.current_page += 1;
-            let request_result = send_sync(&self.client, &Query::new_only_page(self.current_page));
-            self.current_vec = if let Ok(r) = request_result { r } else { return None };
-            self.current_index = 0;
-        }
-
-        let res = self.current_vec.get(self.current_index).cloned();
-        self.current_index += 1;
-
-        res
     }
 }

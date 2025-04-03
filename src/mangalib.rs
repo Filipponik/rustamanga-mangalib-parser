@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 mod builder;
-mod search;
+pub mod search;
 
 use crate::mangalib::builder::Builder;
 use headless_chrome::{Browser, LaunchOptions};
