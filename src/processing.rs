@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tokio::sync::{AcquireError, Semaphore};
-use tracing::{error, info};
+use tracing::{error, info, debug};
 
 macro_rules! retry {
     ($f:expr, $count:expr) => {{
@@ -36,6 +36,8 @@ pub enum Error {
     MutexLock,
     #[error("Semaphore acquire error: {0}")]
     SemaphoreAcquire(#[from] AcquireError),
+    #[error("Handle error")]
+    Handle,
 }
 
 #[derive(Deserialize)]
@@ -84,23 +86,28 @@ async fn get_manga_urls(
         Some(c) => c,
     };
     let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
+
+    let mut handles = Vec::new();
+
     for chapter in &chapters {
         let urls = Arc::clone(&chapter_urls_map);
         let slug = dto.slug.to_string();
         let semaphore = semaphore.clone();
-        tokio::try_join!(async move {
+        let chapter = chapter.clone();
+        handles.push(tokio::spawn(async move {
             let _permit = semaphore.acquire().await?;
             let result = retry!(
                 mangalib::HeadlessBrowserClient::builder()
                     .build()
-                    .get_manga_chapter_images(&slug, chapter)
+                    .get_manga_chapter_images(&slug, &chapter)
             )?;
-            urls.lock()
-                .map_err(|_| Error::MutexLock)?
-                .insert(chapter.clone(), result);
-
+            urls.lock().map_err(|_| Error::MutexLock)?.insert(chapter, result);
             Ok::<(), Error>(())
-        })?;
+        }));
+    }
+
+    for handle in handles {
+        handle.await.map_err(|_| Error::Handle)??; // Двойной `?` для JoinError и вашей Error
     }
 
     let chapter_urls_map = chapter_urls_map
