@@ -55,7 +55,8 @@ struct ImageInner {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MangaPreview {
-    manga_type: String,
+    #[serde(rename(deserialize = "manga_type"))]
+    r#type: String,
     name: String,
     url: String,
     slug: String,

@@ -86,7 +86,7 @@ mod response {
     impl Into<MangaPreview> for Manga {
         fn into(self) -> MangaPreview {
             MangaPreview {
-                manga_type: self.r#type.label,
+                r#type: self.r#type.label,
                 name: self
                     .rus_name
                     .unwrap_or_else(|| self.eng_name.unwrap_or(self.name)),

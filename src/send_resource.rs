@@ -24,7 +24,7 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
             Err(err) => error!("Failed to send resource: {}", err),
         }
     }
-    
+
     Ok(())
 }
 
