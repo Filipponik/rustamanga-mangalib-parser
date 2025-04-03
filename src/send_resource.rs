@@ -1,8 +1,8 @@
 use reqwest::Client;
-use serde_json::Value;
 use thiserror::Error;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
+use crate::mangalib::MangaPreview;
 
 const MANGALIB_STATIC_RESOURCE: &str = include_str!("../resource/json/mangalib_manga_list.json");
 
@@ -15,7 +15,7 @@ pub enum Error {
 }
 
 pub async fn send_resource(url: &str) -> Result<(), Error> {
-    let resource_vec: Vec<Value> =
+    let resource_vec: Vec<MangaPreview> =
         serde_json::from_str(MANGALIB_STATIC_RESOURCE).map_err(Error::Parse)?;
 
     let client = Client::new();
@@ -28,7 +28,7 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
     Ok(())
 }
 
-fn process_single_resource(url: String, res: Value, client: Client) -> JoinHandle<()> {
+fn process_single_resource(url: String, res: MangaPreview, client: Client) -> JoinHandle<()> {
     tokio::spawn(async move {
         match send_single_resource(client, &url, res).await {
             Ok(()) => info!("Successfully sent"),
@@ -37,7 +37,7 @@ fn process_single_resource(url: String, res: Value, client: Client) -> JoinHandl
     })
 }
 
-async fn send_single_resource(client: Client, url: &str, res: Value) -> Result<(), Error> {
+async fn send_single_resource(client: Client, url: &str, res: MangaPreview) -> Result<(), Error> {
     client.post(url).json(&res).send().await?;
 
     Ok(())
