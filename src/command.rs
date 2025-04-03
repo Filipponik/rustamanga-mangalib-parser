@@ -74,7 +74,7 @@ pub async fn process_commands() -> Result<(), Error> {
         Some(("collect-resource-full", _sub_matches)) => {
             let iter = mangalib::search::get_manga_iter();
             let output = iter.collect::<Vec<MangaPreview>>().await;
-            let mut file = File::create("resource/json/mangalib_manga_list_2025_04_03.json").await.unwrap();
+            let mut file = File::create("resource/json/mangalib_manga_list.json").await.unwrap();
             file.write_all(serde_json::to_string(&output).unwrap().as_bytes()).await.unwrap();
 
             Ok(())
