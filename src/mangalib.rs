@@ -157,7 +157,7 @@ impl Client for HeadlessBrowserClient {
                 "{}/api/manga/{slug}/chapter?number={}&volume={}",
                 self.base_url, manga_chapter.chapter_number, manga_chapter.chapter_volume
             ),
-            &format!("[{chapter_index}/{total_chapters}]Searching manga chapter urls"),
+            &format!("[{chapter_index}/{total_chapters}] Searching manga chapter urls"),
         )?;
 
         let images = image_inner_list
@@ -175,6 +175,8 @@ impl Client for HeadlessBrowserClient {
             &format!("{}/api/manga/{slug}/chapters", self.base_url),
             slug,
         )?;
+        
+        debug!("Found {} chapters", chapter_inner_list.data.len());
 
         let chapters = chapter_inner_list
             .data
