@@ -88,18 +88,19 @@ async fn get_manga_urls(
     let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
 
     let mut handles = Vec::new();
-
-    for chapter in &chapters {
+    let chapters_len = chapters.len();
+    for (index, chapter) in chapters.iter().enumerate() {
         let urls = Arc::clone(&chapter_urls_map);
         let slug = dto.slug.to_string();
         let semaphore = semaphore.clone();
         let chapter = chapter.clone();
+        let chapters_len = chapters_len.clone();
         handles.push(tokio::spawn(async move {
             let _permit = semaphore.acquire().await?;
             let result = retry!(
                 mangalib::HeadlessBrowserClient::builder()
                     .build()
-                    .get_manga_chapter_images(&slug, &chapter)
+                    .get_manga_chapter_images(&slug, &chapter, index, chapters_len)
             )?;
             urls.lock().map_err(|_| Error::MutexLock)?.insert(chapter, result);
             Ok::<(), Error>(())

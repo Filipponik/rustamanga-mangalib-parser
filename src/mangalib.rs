@@ -149,6 +149,8 @@ impl Client for HeadlessBrowserClient {
         &self,
         slug: &str,
         manga_chapter: &MangaChapter,
+        chapter_index: usize,
+        total_chapters: usize,
     ) -> Result<Vec<String>, Error> {
         let image_inner_list: ImageInnerList = self.parse(
             &format!(
@@ -189,6 +191,8 @@ pub trait Client {
         &self,
         slug: &str,
         manga_chapter: &MangaChapter,
+        chapter_index: usize,
+        total_chapters: usize,
     ) -> Result<Vec<String>, Error>;
 
     fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
