@@ -100,7 +100,7 @@ async fn get_manga_urls(
             let result = retry!(
                 mangalib::HeadlessBrowserClient::builder()
                     .build()
-                    .get_manga_chapter_images(&slug, &chapter, index, chapters_len)
+                    .get_manga_chapter_images(&slug, &chapter, index + 1, chapters_len)
             )?;
             urls.lock().map_err(|_| Error::MutexLock)?.insert(chapter, result);
             Ok::<(), Error>(())
