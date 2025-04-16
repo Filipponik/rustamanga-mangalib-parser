@@ -1,6 +1,6 @@
 use crate::mangalib::MangaPreview;
 use crate::{config, mangalib, rabbitmq_consumer, send_resource, server};
-use clap::{Command, arg};
+use clap::{Command, arg, ArgMatches};
 use futures::StreamExt;
 use thiserror::Error;
 use tokio::fs::File;
@@ -44,19 +44,17 @@ pub enum Error {
     SendResource(#[from] send_resource::Error),
     #[error("Failed to consume rabbitmq queue {0}")]
     Consume(#[from] rabbitmq_consumer::Error),
+    #[error("Failed to parse arguments: {0}")]
+    ArgError(String),
 }
 
 pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", sub_matches)) => {
-            let port = sub_matches
-                .get_one::<u16>("port")
-                .unwrap_or(&config::DEFAULT_APP_PORT);
-            let chrome_max_count = sub_matches
-                .get_one::<u16>("browsers")
-                .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT);
+            let port = parse_port(sub_matches)?;
+            let chrome_max_count = parse_chrome_max_count(sub_matches)?;
 
-            serve(*port, *chrome_max_count).await
+            serve(port, chrome_max_count).await
         }
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
@@ -64,11 +62,9 @@ pub async fn process_commands() -> Result<(), Error> {
         }
         Some(("consume", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
-            let chrome_max_count = sub_matches
-                .get_one::<u16>("browsers")
-                .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT);
+            let chrome_max_count = parse_chrome_max_count(sub_matches)?;
 
-            consume(url, *chrome_max_count).await
+            consume(url, chrome_max_count).await
         }
         Some(("collect-resource-full", _sub_matches)) => {
             let iter = mangalib::search::get_manga_iter();
@@ -85,6 +81,22 @@ pub async fn process_commands() -> Result<(), Error> {
         Some((command, _)) => Err(Error::NoSuchCommand(command.to_string())),
         None => Err(Error::NoCommandSpecified),
     }
+}
+
+fn parse_chrome_max_count(sub_matches: &ArgMatches) -> Result<u16, Error> {
+    sub_matches
+        .get_one::<String>("browsers")
+        .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT.to_string())
+        .parse::<u16>()
+        .map_err(|err| Error::ArgError(format!("Failed to parse chrome max count: {err}")))
+}
+
+fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
+    sub_matches
+        .get_one::<String>("port")
+        .unwrap_or(&config::DEFAULT_APP_PORT.to_string())
+        .parse::<u16>()
+        .map_err(|err| Error::ArgError(format!("Failed to parse port: {err}")))
 }
 
 async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
