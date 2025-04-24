@@ -83,23 +83,27 @@ mod response {
         seed: String,
     }
 
-    impl Into<MangaPreview> for Manga {
-        fn into(self) -> MangaPreview {
-            MangaPreview {
-                r#type: self.r#type.label,
-                name: self
+    impl From<Manga> for MangaPreview {
+        fn from(value: Manga) -> Self {
+            Self {
+                r#type: value.r#type.label,
+                name: value
                     .rus_name
-                    .unwrap_or_else(|| self.eng_name.unwrap_or(self.name)),
-                url: format!("https://mangalib.me/{}", self.slug_url),
-                slug: self.slug,
-                image_url: self.cover.default,
+                    .unwrap_or_else(|| value.eng_name.unwrap_or(value.name)),
+                url: format!("https://mangalib.me/{}", value.slug_url),
+                slug: value.slug,
+                image_url: value.cover.default,
             }
         }
     }
 
-    impl Into<Vec<MangaPreview>> for Response {
-        fn into(self) -> Vec<MangaPreview> {
-            self.data.into_iter().map(|m| m.into()).collect()
+    impl From<Response> for Vec<MangaPreview> {
+        fn from(value: Response) -> Self {
+            value
+                .data
+                .into_iter()
+                .map(std::convert::Into::into)
+                .collect()
         }
     }
 }
