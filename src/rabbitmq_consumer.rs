@@ -107,7 +107,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
                     .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
                 error!("{err:#?}");
             }
-        };
+        }
     }
 
     Ok(())

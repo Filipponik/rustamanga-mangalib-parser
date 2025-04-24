@@ -67,7 +67,7 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Resul
     match response {
         Ok(body) => info!("Successfully sent manga: {body}"),
         Err(err) => error!("Error while sending manga: {err:?}"),
-    };
+    }
 
     Ok(())
 }
@@ -94,7 +94,6 @@ async fn get_manga_urls(
         let slug = dto.slug.to_string();
         let semaphore = semaphore.clone();
         let chapter = chapter.clone();
-        let chapters_len = chapters_len.clone();
         handles.push(tokio::spawn(async move {
             let _permit = semaphore.acquire().await?;
             let result = retry!(
