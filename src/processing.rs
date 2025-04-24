@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tokio::sync::{AcquireError, Semaphore};
-use tracing::{error, info, debug};
+use tracing::{error, info};
 
 macro_rules! retry {
     ($f:expr, $count:expr) => {{
@@ -102,7 +102,9 @@ async fn get_manga_urls(
                     .build()
                     .get_manga_chapter_images(&slug, &chapter, index + 1, chapters_len)
             )?;
-            urls.lock().map_err(|_| Error::MutexLock)?.insert(chapter, result);
+            urls.lock()
+                .map_err(|_| Error::MutexLock)?
+                .insert(chapter, result);
             Ok::<(), Error>(())
         }));
     }

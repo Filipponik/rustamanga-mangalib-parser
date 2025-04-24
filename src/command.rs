@@ -1,6 +1,6 @@
 use crate::mangalib::MangaPreview;
 use crate::{config, mangalib, rabbitmq_consumer, send_resource, server};
-use clap::{Command, arg, ArgMatches};
+use clap::{ArgMatches, Command, arg};
 use futures::StreamExt;
 use thiserror::Error;
 use tokio::fs::File;

@@ -175,7 +175,7 @@ impl Client for HeadlessBrowserClient {
             &format!("{}/api/manga/{slug}/chapters", self.base_url),
             slug,
         )?;
-        
+
         debug!("Found {} chapters", chapter_inner_list.data.len());
 
         let chapters = chapter_inner_list
