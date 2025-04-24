@@ -45,7 +45,7 @@ pub enum Error {
     #[error("Failed to consume rabbitmq queue {0}")]
     Consume(#[from] rabbitmq_consumer::Error),
     #[error("Failed to parse arguments: {0}")]
-    ArgError(String),
+    BadArgument(String),
 }
 
 pub async fn process_commands() -> Result<(), Error> {
@@ -88,7 +88,7 @@ fn parse_chrome_max_count(sub_matches: &ArgMatches) -> Result<u16, Error> {
         .get_one::<String>("browsers")
         .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT.to_string())
         .parse::<u16>()
-        .map_err(|err| Error::ArgError(format!("Failed to parse chrome max count: {err}")))
+        .map_err(|err| Error::BadArgument(format!("Failed to parse chrome max count: {err}")))
 }
 
 fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
@@ -96,7 +96,7 @@ fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
         .get_one::<String>("port")
         .unwrap_or(&config::DEFAULT_APP_PORT.to_string())
         .parse::<u16>()
-        .map_err(|err| Error::ArgError(format!("Failed to parse port: {err}")))
+        .map_err(|err| Error::BadArgument(format!("Failed to parse port: {err}")))
 }
 
 async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
