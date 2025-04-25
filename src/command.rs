@@ -71,10 +71,14 @@ pub async fn process_commands() -> Result<(), Error> {
             let output = iter.collect::<Vec<MangaPreview>>().await;
             let mut file = File::create("resource/json/mangalib_manga_list.json")
                 .await
-                .unwrap();
-            file.write_all(serde_json::to_string(&output).unwrap().as_bytes())
-                .await
-                .unwrap();
+                .expect("Cannot create resource/json/mangalib_manga_list.json file");
+            file.write_all(
+                serde_json::to_string(&output)
+                    .expect("Cannot serialize output to json")
+                    .as_bytes(),
+            )
+            .await
+            .expect("Cannot write to file");
 
             Ok(())
         }
