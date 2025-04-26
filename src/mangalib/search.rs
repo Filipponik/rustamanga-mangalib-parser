@@ -198,7 +198,7 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
 
 pub fn get_manga_iter() -> impl Stream<Item = MangaPreview> {
     stream! {
-        let quota = Quota::per_minute(NonZeroU32::new(30).unwrap());
+        let quota = Quota::per_minute(NonZeroU32::new(30).expect("Bad quota argument"));
         let rate_limiter = DefaultKeyedRateLimiter::keyed(quota);
         let client = reqwest::Client::new();
 
