@@ -1817,27 +1817,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mangalib"
-version = "0.8.0"
-dependencies = [
- "async-stream",
- "axum",
- "clap",
- "dotenv",
- "futures",
- "governor",
- "headless_chrome",
- "lapin",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2464,6 +2443,27 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rustamanga-mangalib-parser"
+version = "0.8.0"
+dependencies = [
+ "async-stream",
+ "axum",
+ "clap",
+ "dotenv",
+ "futures",
+ "governor",
+ "headless_chrome",
+ "lapin",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
