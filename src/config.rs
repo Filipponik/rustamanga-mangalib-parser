@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use once_cell::sync::OnceCell;
 use tracing_appender::{
     non_blocking::{NonBlocking, WorkerGuard},
@@ -10,7 +11,7 @@ pub const DEFAULT_LOG_DIRECTORY_PATH: &str = "/var/log/rustamanga-mangalib-parse
 
 static GUARD: OnceCell<WorkerGuard> = OnceCell::new();
 
-pub fn setup_logging() {
+pub fn setup_logging_json_file() {
     dotenv::dotenv().ok();
     GUARD.get_or_init(|| {
         let (writer, guard) = setup_writer();
@@ -20,7 +21,19 @@ pub fn setup_logging() {
     });
 }
 
-pub fn setup_tracing(writer: NonBlocking) {
+pub fn setup_logging_console_text() {
+    dotenv::dotenv().ok();
+    tracing_subscriber::fmt()
+        .with_level(true)
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_names(true)
+        .with_thread_ids(true)
+        .with_env_filter("rustamanga_mangalib_parser=debug")
+        .init();
+}
+
+fn setup_tracing(writer: NonBlocking) {
     tracing_subscriber::fmt()
         .json()
         .with_level(true)
@@ -30,10 +43,10 @@ pub fn setup_tracing(writer: NonBlocking) {
         .with_thread_ids(true)
         .with_writer(writer)
         .with_env_filter("rustamanga_mangalib_parser=debug")
-        .init()
+        .init();
 }
 
-pub fn setup_writer() -> (NonBlocking, WorkerGuard) {
+fn setup_writer() -> (NonBlocking, WorkerGuard) {
     let appender = RollingFileAppender::builder()
         .rotation(Rotation::NEVER)
         .filename_prefix("test")
