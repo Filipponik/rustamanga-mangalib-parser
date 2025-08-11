@@ -29,6 +29,7 @@ pub fn setup_tracing(writer: NonBlocking) {
         .with_thread_names(true)
         .with_thread_ids(true)
         .with_writer(writer)
+        .with_env_filter("rustamanga_mangalib_parser=debug")
         .init()
 }
 
