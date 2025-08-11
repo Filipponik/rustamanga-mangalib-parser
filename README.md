@@ -21,12 +21,25 @@ Or you can just download latest release
 ### Sending resource
 
 ```shell
+Usage: ./rustamanga-mangalib-parser send-resource [OPTIONS]
+
+Options:
+      --url <URL>  URL where we should send this resource
+  -h, --help       Print help
+
 ./rustamanga-mangalib-parser send-resource --url=https://example.com
 ```
 
 ### Start web server
 
 ````shell
+Usage: ./rustamanga-mangalib-parser serve [OPTIONS]
+
+Options:
+      --port <PORT>          Web server port
+      --browsers <BROWSERS>  Max chrome browsers count
+  -h, --help                 Print help
+
 ./rustamanga-mangalib-parser serve --port=12345 --browsers=16
 ````
 
@@ -44,5 +57,12 @@ POST /scrap-manga
 ### Start RabbitMQ consumer
 
 ```shell
+Usage: ./rustamanga-mangalib-parser consume [OPTIONS]
+
+Options:
+      --url <URL>            AMQP URI
+      --browsers <BROWSERS>  Max chrome browsers count
+  -h, --help                 Print help
+
 ./rustamanga-mangalib-parser consume --url=amqp://guest:guest@localhost:5672 --browsers=16
 ```
