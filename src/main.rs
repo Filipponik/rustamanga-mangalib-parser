@@ -11,7 +11,7 @@ mod server;
 
 #[tokio::main]
 async fn main() -> Result<(), command::Error> {
-    config::setup_tracing();
+    config::setup_logging();
     if let Err(err) = process_commands().await {
         error!("Error: {}", err);
     }
