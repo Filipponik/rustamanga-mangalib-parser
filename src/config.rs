@@ -4,6 +4,10 @@ use tracing_appender::{
     non_blocking::{NonBlocking, WorkerGuard},
     rolling::{RollingFileAppender, Rotation},
 };
+use tracing_subscriber::{
+    EnvFilter,
+    fmt::{SubscriberBuilder, format::DefaultFields},
+};
 
 pub const DEFAULT_APP_PORT: u16 = 8000;
 pub const DEFAULT_CHROME_MAX_COUNT: u16 = 16;
@@ -11,18 +15,31 @@ pub const DEFAULT_LOG_DIRECTORY_PATH: &str = "/var/log/rustamanga-mangalib-parse
 
 static GUARD: OnceCell<WorkerGuard> = OnceCell::new();
 
-pub fn setup_logging_json_file() {
-    dotenv::dotenv().ok();
-    GUARD.get_or_init(|| {
-        let (writer, guard) = setup_writer();
-        setup_tracing(writer);
+pub struct Logger;
 
-        guard
-    });
+#[allow(clippy::unused_self)]
+impl Logger {
+    pub fn new() -> Self {
+        dotenv::dotenv().ok();
+        Self
+    }
+
+    pub fn setup_json_file(&self) {
+        GUARD.get_or_init(|| {
+            let (writer, guard) = setup_file_non_blocking_writer();
+            base_tracing().json().with_writer(writer).init();
+
+            guard
+        });
+    }
+
+    pub fn setup_console_text(&self) {
+        base_tracing().init();
+    }
 }
 
-pub fn setup_logging_console_text() {
-    dotenv::dotenv().ok();
+fn base_tracing()
+-> SubscriberBuilder<DefaultFields, tracing_subscriber::fmt::format::Format, EnvFilter> {
     tracing_subscriber::fmt()
         .with_level(true)
         .with_file(true)
@@ -30,23 +47,9 @@ pub fn setup_logging_console_text() {
         .with_thread_names(true)
         .with_thread_ids(true)
         .with_env_filter("rustamanga_mangalib_parser=debug")
-        .init();
 }
 
-fn setup_tracing(writer: NonBlocking) {
-    tracing_subscriber::fmt()
-        .json()
-        .with_level(true)
-        .with_file(true)
-        .with_line_number(true)
-        .with_thread_names(true)
-        .with_thread_ids(true)
-        .with_writer(writer)
-        .with_env_filter("rustamanga_mangalib_parser=debug")
-        .init();
-}
-
-fn setup_writer() -> (NonBlocking, WorkerGuard) {
+fn setup_file_non_blocking_writer() -> (NonBlocking, WorkerGuard) {
     let appender = RollingFileAppender::builder()
         .rotation(Rotation::NEVER)
         .filename_prefix("test")
