@@ -1,4 +1,4 @@
-version=0.8.2
+version=0.8.3
 image=filipponik/mangalib
 platforms=linux/amd64,linux/arm64
 
