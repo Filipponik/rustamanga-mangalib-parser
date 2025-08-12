@@ -62,11 +62,11 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Resul
         after_volume: payload.after_volume,
     };
     let manga = get_manga_urls(&dto, chrome_max_count).await?;
-    info!("Sending manga to {}", payload.callback_url);
+    info!(callback_url = payload.callback_url, "Sending manga",);
     let response = send_info_about_manga(&payload.callback_url, &manga).await;
     match response {
-        Ok(body) => info!("Successfully sent manga: {body}"),
-        Err(err) => error!("Error while sending manga: {err:?}"),
+        Ok(body) => info!(body = body, "Successfully sent manga"),
+        Err(err) => error!(manga_slug = dto.slug, "Error while sending manga: {err:?}"),
     }
 
     Ok(())

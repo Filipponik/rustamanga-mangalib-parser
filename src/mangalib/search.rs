@@ -154,7 +154,7 @@ pub enum SendingError {
 }
 
 async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SendingError> {
-    debug!("Requesting {} page", query.page);
+    debug!(page = query.page, "Requesting page");
 
     let response = client
         .get("https://api.lib.social/api/manga")
@@ -164,32 +164,29 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
 
     let response = match response {
         Ok(response) => {
-            info!("Success requesting manga at page {}", query.page);
+            info!(page = query.page, "Success requesting manga");
             debug!("Response: {response:?}");
 
             Ok(response)
         }
         Err(err) => {
-            error!("Error while requesting manga at page {}", query.page);
+            error!(page = query.page, "Error while requesting manga");
 
             Err(err)
         }
     }?;
 
-    debug!("Parsing page {}", query.page);
+    debug!(page = query.page, "Parsing page");
     let response = response.json::<response::Response>().await;
 
     match response {
         Ok(value) => {
-            info!("Success parsing manga at page {}", query.page);
+            info!(page = query.page, "Success parsing manga");
 
             Ok(value.into())
         }
         Err(err) => {
-            error!(
-                "Error while parsing manga at page {}: {:?}",
-                query.page, err
-            );
+            error!(page = query.page, "Error while parsing manga: {:?}", err);
 
             Err(SendingError::Deserialize(err))
         }

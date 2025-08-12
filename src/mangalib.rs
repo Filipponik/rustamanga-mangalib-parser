@@ -56,11 +56,11 @@ struct ImageInner {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MangaPreview {
     #[serde(rename(deserialize = "manga_type"))]
-    r#type: String,
-    name: String,
-    url: String,
-    slug: String,
-    image_url: String,
+    pub r#type: String,
+    pub name: String,
+    pub url: String,
+    pub slug: String,
+    pub image_url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
@@ -104,7 +104,7 @@ impl HeadlessBrowserClient {
         Builder::default()
     }
 
-    fn parse<T>(&self, url: &str, debug_message_prefix: &str) -> Result<T, Error>
+    fn parse<T>(&self, url: &str) -> Result<T, Error>
     where
         T: for<'de> Deserialize<'de>,
     {
@@ -112,7 +112,6 @@ impl HeadlessBrowserClient {
         let tab = browser
             .new_tab()
             .map_err(|err| Error::BrowserTabCreate(err.to_string()))?;
-        debug!("{} {url}", &debug_message_prefix);
 
         tab.set_user_agent(
             &self.user_agent,
@@ -152,13 +151,17 @@ impl Client for HeadlessBrowserClient {
         chapter_index: usize,
         total_chapters: usize,
     ) -> Result<Vec<String>, Error> {
-        let image_inner_list: ImageInnerList = self.parse(
-            &format!(
-                "{}/api/manga/{slug}/chapter?number={}&volume={}",
-                self.base_url, manga_chapter.chapter_number, manga_chapter.chapter_volume
-            ),
-            &format!("[{chapter_index}/{total_chapters}] Searching manga chapter urls"),
-        )?;
+        let url = &format!(
+            "{}/api/manga/{slug}/chapter?number={}&volume={}",
+            self.base_url, manga_chapter.chapter_number, manga_chapter.chapter_volume
+        );
+        debug!(
+            chapter_index = chapter_index,
+            total_chapters = total_chapters,
+            url = url,
+            "Searching manga chapter image urls",
+        );
+        let image_inner_list: ImageInnerList = self.parse(url)?;
 
         let images = image_inner_list
             .data
@@ -171,12 +174,15 @@ impl Client for HeadlessBrowserClient {
     }
 
     fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
-        let chapter_inner_list: ChapterInnerList = self.parse(
-            &format!("{}/api/manga/{slug}/chapters", self.base_url),
-            slug,
-        )?;
+        let url = &format!("{}/api/manga/{slug}/chapters", self.base_url);
+        debug!(manga_slug = slug, url = url, "Searching manga chapters",);
+        let chapter_inner_list: ChapterInnerList = self.parse(url)?;
 
-        debug!("Found {} chapters", chapter_inner_list.data.len());
+        debug!(
+            manga_slug = slug,
+            "Found {} chapters",
+            chapter_inner_list.data.len()
+        );
 
         let chapters = chapter_inner_list
             .data

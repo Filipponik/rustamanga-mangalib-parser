@@ -19,17 +19,21 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
 
     let client = Client::new();
     for manga in mangas {
-        match send_single_resource(client.clone(), url, manga).await {
-            Ok(()) => info!("Successfully sent"),
-            Err(err) => error!("Failed to send resource: {}", err),
+        match send_single_resource(client.clone(), url, &manga).await {
+            Ok(()) => info!(manga_slug = manga.slug, "Successfully sent"),
+            Err(err) => error!(manga_slug = manga.slug, "Failed to send resource: {}", err),
         }
     }
 
     Ok(())
 }
 
-async fn send_single_resource(client: Client, url: &str, manga: MangaPreview) -> Result<(), Error> {
-    client.post(url).json(&manga).send().await?;
+async fn send_single_resource(
+    client: Client,
+    url: &str,
+    manga: &MangaPreview,
+) -> Result<(), Error> {
+    client.post(url).json(manga).send().await?;
 
     Ok(())
 }

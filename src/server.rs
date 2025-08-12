@@ -79,7 +79,7 @@ pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
         .with_state(state)
         .fallback(handle_404);
 
-    info!("Web server is up: {}", address);
+    info!(address = address, "Web server is up");
     axum::serve(listener, router).await?;
 
     Ok(())

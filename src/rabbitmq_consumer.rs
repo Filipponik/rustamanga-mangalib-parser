@@ -85,7 +85,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
         let processing_result = match payload {
             Ok(value) => process(chrome_max_count, value).await,
             Err(err) => {
-                error!("{err:#?}");
+                error!("Parse delivery error: {err:?}");
                 continue;
             }
         };
@@ -105,7 +105,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
                     })
                     .await
                     .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
-                error!("{err:#?}");
+                error!("Processing error: {err:?}");
             }
         }
     }
@@ -123,7 +123,7 @@ fn parse_json<T: serde::de::DeserializeOwned>(data: &str) -> Result<T, ParseDeli
 
 fn parse_delivery(delivery: &Delivery) -> Result<ScrapMangaRequest, ParseDeliveryErrorType> {
     let string_data = parse_delivery_data(&delivery.data)?;
-    info!("Received {}", string_data);
+    info!(string_data = string_data, "Received delivery");
 
     parse_json(&string_data)
 }
