@@ -40,12 +40,28 @@ pub enum Error {
     Handle,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct ScrapMangaRequest {
+    #[serde(default)]
+    mode: ScrapMangaMode,
     slug: String,
     callback_url: String,
     after_chapter: Option<String>,
     after_volume: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum ScrapMangaMode {
+    #[serde(rename = "full")]
+    Full,
+    #[serde(rename = "only_chapters")]
+    OnlyChapters,
+}
+
+impl Default for ScrapMangaMode {
+    fn default() -> Self {
+        ScrapMangaMode::Full
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -61,7 +77,12 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Resul
         after_chapter: payload.after_chapter,
         after_volume: payload.after_volume,
     };
-    let manga = get_manga_urls(&dto, chrome_max_count).await?;
+
+    let manga = match payload.mode {
+        ScrapMangaMode::Full => get_manga_urls(&dto, chrome_max_count).await?,
+        ScrapMangaMode::OnlyChapters => get_manga_chapters(&dto).await?,
+    };
+
     info!(callback_url = payload.callback_url, "Sending manga",);
     let response = send_info_about_manga(&payload.callback_url, &manga).await;
     match response {
@@ -70,6 +91,30 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Resul
     }
 
     Ok(())
+}
+
+async fn get_manga_chapters(dto: &MangaScrappingParamsDto) -> Result<PublishedManga, Error> {
+    let chapters = mangalib::HeadlessBrowserClient::builder()
+        .build()
+        .get_manga_chapters(&dto.slug)?;
+    let chapters = match filter_chapters(chapters, dto) {
+        None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
+        Some(c) => c,
+    };
+    let chapters = chapters
+        .into_iter()
+        .map(|chapter| PublishedMangaChapter {
+            url: None,
+            chapter: chapter.chapter_number,
+            volume: chapter.chapter_volume,
+            images_urls: vec![],
+        })
+        .collect();
+
+    Ok(PublishedManga {
+        slug: dto.slug.clone(),
+        chapters,
+    })
 }
 
 async fn get_manga_urls(
