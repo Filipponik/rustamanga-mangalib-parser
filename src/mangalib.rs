@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-pub mod search;
 pub mod browser_client;
-pub mod http_client;
 mod deserializers;
+pub mod http_client;
+pub mod search;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -30,7 +30,7 @@ pub enum Error {
     #[error("Failed to get page content: {0}")]
     BrowserGetContent(String),
     #[error("Failed to fetch HTTP: {0}")]
-    ConnectError(#[from] reqwest::Error),
+    Reqwest(#[from] reqwest::Error),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -1,7 +1,7 @@
+use crate::mangalib::{ChapterInnerList, Client, Error, ImageInnerList, MangaChapter};
 use headless_chrome::{Browser, LaunchOptions};
 use serde::Deserialize;
 use tracing::debug;
-use crate::mangalib::{ChapterInnerList, Client, Error, ImageInnerList, MangaChapter};
 
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
 const ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9,hi;q=0.8,es;q=0.7,lt;q=0.6";
@@ -88,7 +88,7 @@ impl HeadlessBrowserClient {
             Some(&self.accept_language),
             Some(&self.platform),
         )
-            .map_err(|err| Error::SetUserAgent(err.to_string()))?;
+        .map_err(|err| Error::SetUserAgent(err.to_string()))?;
         tab.navigate_to(url)
             .map_err(|err| Error::BrowserNavigate(err.to_string()))?
             .wait_until_navigated()

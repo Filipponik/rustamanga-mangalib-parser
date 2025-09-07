@@ -4,7 +4,7 @@ pub fn to_string<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
-    use serde::{de::Error, de::Unexpected, Deserialize};
+    use serde::{Deserialize, de::Error, de::Unexpected};
     use serde_json::Value;
 
     let value = Value::deserialize(deserializer)?;

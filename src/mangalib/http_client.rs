@@ -1,6 +1,6 @@
+use crate::mangalib::{ChapterInnerList, Client, Error, ImageInnerList, MangaChapter};
 use serde::Deserialize;
 use tracing::debug;
-use crate::mangalib::{ChapterInnerList, Client, Error, ImageInnerList, MangaChapter};
 
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
@@ -46,9 +46,7 @@ impl Builder {
             referrer_header: self
                 .referrer_header
                 .unwrap_or_else(|| REFERRER_HEADER.to_string()),
-            reqwest_client: self
-                .reqwest_client
-                .unwrap_or_else(|| reqwest::Client::new()),
+            reqwest_client: self.reqwest_client.unwrap_or_default(),
         }
     }
 }
@@ -69,7 +67,8 @@ impl HttpClient {
     where
         T: for<'de> Deserialize<'de>,
     {
-        let response = self.reqwest_client
+        let response = self
+            .reqwest_client
             .get(url)
             .header("Referrer", self.referrer_header.clone())
             .send()

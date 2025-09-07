@@ -50,18 +50,13 @@ pub struct ScrapMangaRequest {
     after_volume: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub enum ScrapMangaMode {
     #[serde(rename = "full")]
+    #[default]
     Full,
     #[serde(rename = "only_chapters")]
     OnlyChapters,
-}
-
-impl Default for ScrapMangaMode {
-    fn default() -> Self {
-        ScrapMangaMode::Full
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -157,7 +152,7 @@ async fn get_manga_urls(
     }
 
     for handle in handles {
-        handle.await.map_err(|_| Error::Handle)??; // Двойной `?` для JoinError и вашей Error
+        handle.await.map_err(|_| Error::Handle)??;
     }
 
     let chapter_urls_map = chapter_urls_map
