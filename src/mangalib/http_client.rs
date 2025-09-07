@@ -5,12 +5,14 @@ use tracing::debug;
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
 const REFERRER_HEADER: &str = "https://mangalib.org/";
+const SITE_ID_HEADER: &str = "1";
 
 #[derive(Default, Debug)]
 pub struct Builder {
     image_server_prefix: Option<String>,
     base_url: Option<String>,
     referrer_header: Option<String>,
+    site_id_header: Option<String>,
     reqwest_client: Option<reqwest::Client>,
 }
 
@@ -30,6 +32,11 @@ impl Builder {
         self
     }
 
+    pub fn site_id_header(mut self, site_id_header: &str) -> Self {
+        self.site_id_header = Some(site_id_header.to_string());
+        self
+    }
+
     pub fn reqwest_client(mut self, reqwest_client: reqwest::Client) -> Self {
         self.reqwest_client = Some(reqwest_client);
         self
@@ -46,6 +53,9 @@ impl Builder {
             referrer_header: self
                 .referrer_header
                 .unwrap_or_else(|| REFERRER_HEADER.to_string()),
+            site_id_header: self
+                .site_id_header
+                .unwrap_or_else(|| SITE_ID_HEADER.to_string()),
             reqwest_client: self.reqwest_client.unwrap_or_default(),
         }
     }
@@ -55,6 +65,7 @@ pub struct HttpClient {
     image_server_prefix: String,
     base_url: String,
     referrer_header: String,
+    site_id_header: String,
     reqwest_client: reqwest::Client,
 }
 
@@ -71,6 +82,7 @@ impl HttpClient {
             .reqwest_client
             .get(url)
             .header("Referrer", self.referrer_header.clone())
+            .header("Site-Id", "1")
             .send()
             .await?
             .text()
