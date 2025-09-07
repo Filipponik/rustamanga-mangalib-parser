@@ -3,6 +3,7 @@
 
 pub mod search;
 pub mod browser_client;
+pub mod http_client;
 mod deserializers;
 
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,8 @@ pub enum Error {
     BrowserWaitElementTooLong(String),
     #[error("Failed to get page content: {0}")]
     BrowserGetContent(String),
+    #[error("Failed to fetch HTTP: {0}")]
+    ConnectError(#[from] reqwest::Error),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -90,7 +93,7 @@ struct ChapterInner {
 }
 
 pub trait Client {
-    fn get_manga_chapter_images(
+    async fn get_manga_chapter_images(
         &self,
         slug: &str,
         manga_chapter: &MangaChapter,
@@ -98,7 +101,7 @@ pub trait Client {
         total_chapters: usize,
     ) -> Result<Vec<String>, Error>;
 
-    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
+    async fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

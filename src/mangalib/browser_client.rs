@@ -114,7 +114,7 @@ impl HeadlessBrowserClient {
 }
 
 impl Client for HeadlessBrowserClient {
-    fn get_manga_chapter_images(
+    async fn get_manga_chapter_images(
         &self,
         slug: &str,
         manga_chapter: &MangaChapter,
@@ -143,7 +143,7 @@ impl Client for HeadlessBrowserClient {
         Ok(images)
     }
 
-    fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
+    async fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
         let url = &format!("{}/api/manga/{slug}/chapters", self.base_url);
         debug!(manga_slug = slug, url = url, "Searching manga chapters",);
         let chapter_inner_list: ChapterInnerList = self.parse(url)?;

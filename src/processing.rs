@@ -96,7 +96,8 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Resul
 async fn get_manga_chapters(dto: &MangaScrappingParamsDto) -> Result<PublishedManga, Error> {
     let chapters = mangalib::browser_client::HeadlessBrowserClient::builder()
         .build()
-        .get_manga_chapters(&dto.slug)?;
+        .get_manga_chapters(&dto.slug)
+        .await?;
     let chapters = match filter_chapters(chapters, dto) {
         None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
         Some(c) => c,
@@ -125,7 +126,8 @@ async fn get_manga_urls(
         Arc::new(Mutex::new(HashMap::new()));
     let chapters = mangalib::browser_client::HeadlessBrowserClient::builder()
         .build()
-        .get_manga_chapters(&dto.slug)?;
+        .get_manga_chapters(&dto.slug)
+        .await?;
     let chapters = match filter_chapters(chapters, dto) {
         None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
         Some(c) => c,
@@ -145,6 +147,7 @@ async fn get_manga_urls(
                 mangalib::browser_client::HeadlessBrowserClient::builder()
                     .build()
                     .get_manga_chapter_images(&slug, &chapter, index + 1, chapters_len)
+                    .await
             )?;
             urls.lock()
                 .map_err(|_| Error::MutexLock)?
