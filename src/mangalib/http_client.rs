@@ -82,7 +82,7 @@ impl HttpClient {
             .reqwest_client
             .get(url)
             .header("Referrer", self.referrer_header.clone())
-            .header("Site-Id", "1")
+            .header("Site-Id", self.site_id_header.clone())
             .send()
             .await?
             .text()
