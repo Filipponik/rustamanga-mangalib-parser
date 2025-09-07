@@ -94,7 +94,7 @@ pub async fn process(chrome_max_count: u16, payload: ScrapMangaRequest) -> Resul
 }
 
 async fn get_manga_chapters(dto: &MangaScrappingParamsDto) -> Result<PublishedManga, Error> {
-    let chapters = mangalib::HeadlessBrowserClient::builder()
+    let chapters = mangalib::browser_client::HeadlessBrowserClient::builder()
         .build()
         .get_manga_chapters(&dto.slug)?;
     let chapters = match filter_chapters(chapters, dto) {
@@ -123,7 +123,7 @@ async fn get_manga_urls(
 ) -> Result<PublishedManga, Error> {
     let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
         Arc::new(Mutex::new(HashMap::new()));
-    let chapters = mangalib::HeadlessBrowserClient::builder()
+    let chapters = mangalib::browser_client::HeadlessBrowserClient::builder()
         .build()
         .get_manga_chapters(&dto.slug)?;
     let chapters = match filter_chapters(chapters, dto) {
@@ -142,7 +142,7 @@ async fn get_manga_urls(
         handles.push(tokio::spawn(async move {
             let _permit = semaphore.acquire().await?;
             let result = retry!(
-                mangalib::HeadlessBrowserClient::builder()
+                mangalib::browser_client::HeadlessBrowserClient::builder()
                     .build()
                     .get_manga_chapter_images(&slug, &chapter, index + 1, chapters_len)
             )?;
