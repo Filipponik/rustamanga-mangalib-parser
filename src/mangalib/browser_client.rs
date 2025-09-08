@@ -98,6 +98,7 @@ impl Builder {
     }
 }
 
+#[derive(Clone)]
 pub struct HeadlessBrowserClient {
     user_agent: String,
     accept_language: String,

@@ -99,6 +99,7 @@ impl Builder {
     }
 }
 
+#[derive(Clone)]
 pub struct HttpClient {
     image_server_prefix: String,
     base_url: String,

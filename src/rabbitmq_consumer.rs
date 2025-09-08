@@ -1,4 +1,5 @@
-use crate::processing::{ScrapMangaRequest, process};
+use crate::mangalib::http_client::HttpClient;
+use crate::processing::{Processor, ScrapMangaRequest};
 use futures::StreamExt;
 use lapin::message::Delivery;
 use lapin::options::{
@@ -74,6 +75,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
     let mut consumer = create_consumer(&channel).await?;
 
     info!("Waiting for jobs");
+    let processor = Processor::new(HttpClient::builder().build());
 
     while let Some(delivery) = consumer.next().await {
         let Ok(delivery) = delivery else {
@@ -83,7 +85,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
         let payload = parse_delivery(&delivery);
 
         let processing_result = match payload {
-            Ok(value) => process(chrome_max_count, value).await,
+            Ok(value) => processor.process(chrome_max_count, value).await,
             Err(err) => {
                 error!("Parse delivery error: {err:?}");
                 continue;

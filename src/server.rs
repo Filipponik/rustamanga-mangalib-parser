@@ -1,5 +1,7 @@
-use crate::processing;
+use crate::mangalib::Client;
+use crate::mangalib::http_client::HttpClient;
 use crate::processing::ScrapMangaRequest;
+use crate::processing::{self, Processor};
 use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
 use axum::routing::post;
@@ -14,13 +16,14 @@ use tracing::{error, info};
 const SCRAP_MANGA_ROUTE: &str = "/scrap-manga";
 
 #[derive(Clone)]
-struct AppState {
+struct AppState<TProcessor: Client + Clone> {
     config: AppConfig,
+    processor: processing::Processor<TProcessor>,
 }
 
-impl AppState {
-    pub const fn new(config: AppConfig) -> Self {
-        Self { config }
+impl<TProcessor: Client + Clone> AppState<TProcessor> {
+    pub const fn new(config: AppConfig, processor: processing::Processor<TProcessor>) -> Self {
+        Self { config, processor }
     }
 }
 
@@ -69,7 +72,10 @@ pub enum Error {
 
 pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
     let config = AppConfig::new(port, chrome_max_count);
-    let state = Arc::new(AppState::new(config));
+    let state = Arc::new(AppState::new(
+        config,
+        Processor::new(HttpClient::builder().build()),
+    ));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;
 
@@ -85,12 +91,20 @@ pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
     Ok(())
 }
 
-async fn scrap_manga(
-    State(state): State<Arc<AppState>>,
+async fn scrap_manga<TProcessor: Client + Clone + Send + Sync + 'static>(
+    State(state): State<Arc<AppState<TProcessor>>>,
     Json(payload): Json<ScrapMangaRequest>,
-) -> (StatusCode, Json<Value>) {
+) -> (StatusCode, Json<Value>)
+where
+    // Добавляем ограничение, что Processor должен создавать Send future
+    processing::Processor<TProcessor>: Send + Sync + 'static,
+{
+    // Извлекаем processor из state, чтобы избежать захвата всей state
+    let processor = state.processor.clone();
+    let chrome_max_count = state.config.chrome_max_count;
+
     tokio::spawn(async move {
-        if let Err(err) = processing::process(state.config.chrome_max_count, payload).await {
+        if let Err(err) = processor.process(chrome_max_count, payload).await {
             error!("Error while processing manga: {err:?}");
         }
     });

@@ -65,13 +65,16 @@ impl MangaChapter {
 }
 
 pub trait Client {
-    async fn get_manga_chapter_images(
+    fn get_manga_chapter_images(
         &self,
         slug: &str,
         manga_chapter: &MangaChapter,
         chapter_index: usize,
         total_chapters: usize,
-    ) -> Result<Vec<String>, Error>;
+    ) -> impl std::future::Future<Output = Result<Vec<String>, Error>> + std::marker::Send;
 
-    async fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
+    fn get_manga_chapters(
+        &self,
+        slug: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<MangaChapter>, Error>> + std::marker::Send;
 }
