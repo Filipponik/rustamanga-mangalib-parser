@@ -1,4 +1,4 @@
-use crate::mangalib::{ChapterInnerList, Client, Error, ImageInnerList, MangaChapter};
+use crate::mangalib::{Client, Error, MangaChapter};
 use serde::Deserialize;
 use tracing::debug;
 
@@ -6,6 +6,43 @@ const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
 const REFERRER_HEADER: &str = "https://mangalib.org/";
 const SITE_ID_HEADER: &str = "1";
+
+#[derive(Deserialize, Debug, Clone)]
+struct ImageInnerList {
+    data: ImageInnerListData,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ImageInnerListData {
+    pages: Vec<ImageInner>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ImageInner {
+    id: u128,
+    image: String,
+    height: u32,
+    width: u32,
+    url: String,
+    #[serde(deserialize_with = "crate::mangalib::deserializers::to_string")]
+    ratio: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ChapterInner {
+    id: u128,
+    index: u128,
+    item_number: u128,
+    volume: String,
+    number: String,
+    number_secondary: Option<String>,
+    name: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ChapterInnerList {
+    data: Vec<ChapterInner>,
+}
 
 #[derive(Default, Debug)]
 pub struct Builder {
@@ -17,23 +54,23 @@ pub struct Builder {
 }
 
 impl Builder {
-    pub fn image_server_prefix(mut self, image_server_prefix: &str) -> Self {
-        self.image_server_prefix = Some(image_server_prefix.to_string());
+    pub fn image_server_prefix(mut self, image_server_prefix: impl Into<String>) -> Self {
+        self.image_server_prefix = Some(image_server_prefix.into());
         self
     }
 
-    pub fn base_url(mut self, base_url: &str) -> Self {
-        self.base_url = Some(base_url.to_string());
+    pub fn base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = Some(base_url.into());
         self
     }
 
-    pub fn referrer_header(mut self, referrer_header: &str) -> Self {
-        self.referrer_header = Some(referrer_header.to_string());
+    pub fn referrer_header(mut self, referrer_header: impl Into<String>) -> Self {
+        self.referrer_header = Some(referrer_header.into());
         self
     }
 
-    pub fn site_id_header(mut self, site_id_header: &str) -> Self {
-        self.site_id_header = Some(site_id_header.to_string());
+    pub fn site_id_header(mut self, site_id_header: impl Into<String>) -> Self {
+        self.site_id_header = Some(site_id_header.into());
         self
     }
 
@@ -81,8 +118,8 @@ impl HttpClient {
         let response = self
             .reqwest_client
             .get(url)
-            .header("Referrer", self.referrer_header.clone())
-            .header("Site-Id", self.site_id_header.clone())
+            .header("Referrer", &self.referrer_header)
+            .header("Site-Id", &self.site_id_header)
             .send()
             .await?
             .text()

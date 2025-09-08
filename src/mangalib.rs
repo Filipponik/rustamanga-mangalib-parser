@@ -35,27 +35,6 @@ pub enum Error {
     Reqwest(#[from] reqwest::Error),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ImageInnerList {
-    data: ImageInnerListData,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ImageInnerListData {
-    pages: Vec<ImageInner>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ImageInner {
-    id: u128,
-    image: String,
-    height: u32,
-    width: u32,
-    url: String,
-    #[serde(deserialize_with = "deserializers::to_string")]
-    ratio: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MangaPreview {
     #[serde(rename(deserialize = "manga_type"))]
@@ -83,17 +62,6 @@ impl MangaChapter {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChapterInner {
-    id: u128,
-    index: u128,
-    item_number: u128,
-    volume: String,
-    number: String,
-    number_secondary: Option<String>,
-    name: Option<String>,
-}
-
 pub trait Client {
     async fn get_manga_chapter_images(
         &self,
@@ -104,9 +72,4 @@ pub trait Client {
     ) -> Result<Vec<String>, Error>;
 
     async fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error>;
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ChapterInnerList {
-    data: Vec<ChapterInner>,
 }

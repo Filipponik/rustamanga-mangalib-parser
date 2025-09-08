@@ -1,4 +1,4 @@
-use crate::mangalib::{ChapterInnerList, Client, Error, ImageInnerList, MangaChapter};
+use crate::mangalib::{Client, Error, MangaChapter};
 use headless_chrome::{Browser, LaunchOptions};
 use serde::Deserialize;
 use tracing::debug;
@@ -18,29 +18,66 @@ pub struct Builder {
     base_url: Option<String>,
 }
 
+#[derive(Deserialize, Debug, Clone)]
+struct ImageInnerList {
+    data: ImageInnerListData,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ImageInnerListData {
+    pages: Vec<ImageInner>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ImageInner {
+    id: u128,
+    image: String,
+    height: u32,
+    width: u32,
+    url: String,
+    #[serde(deserialize_with = "crate::mangalib::deserializers::to_string")]
+    ratio: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ChapterInner {
+    id: u128,
+    index: u128,
+    item_number: u128,
+    volume: String,
+    number: String,
+    number_secondary: Option<String>,
+    name: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct ChapterInnerList {
+    data: Vec<ChapterInner>,
+}
+
 impl Builder {
-    pub fn user_agent(mut self, user_agent: &str) -> Self {
-        self.user_agent = Some(user_agent.to_string());
+    pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
+        self.user_agent = Some(user_agent.into());
         self
     }
 
-    pub fn accept_language(mut self, accept_language: &str) -> Self {
-        self.accept_language = Some(accept_language.to_string());
+    pub fn accept_language(mut self, accept_language: impl Into<String>) -> Self {
+        self.accept_language = Some(accept_language.into());
         self
     }
 
-    pub fn platform(mut self, platform: &str) -> Self {
-        self.platform = Some(platform.to_string());
+    pub fn platform(mut self, platform: impl Into<String>) -> Self {
+        self.platform = Some(platform.into());
         self
     }
 
-    pub fn image_server_prefix(mut self, image_server_prefix: &str) -> Self {
-        self.image_server_prefix = Some(image_server_prefix.to_string());
+    pub fn image_server_prefix(mut self, image_server_prefix: impl Into<String>) -> Self {
+        self.image_server_prefix = Some(image_server_prefix.into());
         self
     }
 
-    pub fn base_url(mut self, base_url: &str) -> Self {
-        self.base_url = Some(base_url.to_string());
+    pub fn base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = Some(base_url.into());
         self
     }
 
