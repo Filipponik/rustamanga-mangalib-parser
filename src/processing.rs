@@ -1,29 +1,14 @@
 use crate::mangalib;
-use crate::mangalib::Client;
+use dashmap::DashMap;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::ops::Add;
 use std::sync::Arc;
+use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::Mutex;
 use tokio::sync::{AcquireError, Semaphore};
+use tokio::time::sleep;
 use tracing::{error, info};
-
-macro_rules! retry {
-    ($f:expr, $count:expr) => {{
-        let mut tries = 0;
-        let result = loop {
-            let result = $f;
-            tries += 1;
-            if result.is_ok() || tries >= $count {
-                break result;
-            }
-        };
-        result
-    }};
-    ($f:expr) => {
-        retry!($f, 5)
-    };
-}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -33,8 +18,6 @@ pub enum Error {
     ChapterNotFound { chapter: mangalib::MangaChapter },
     #[error("Chapter not found for filter, {dto:?}")]
     ChapterNotFoundForFilter { dto: MangaScrappingParamsDto },
-    #[error("Can't get mutex lock")]
-    MutexLock,
     #[error("Semaphore acquire error: {0}")]
     SemaphoreAcquire(#[from] AcquireError),
     #[error("Handle error")]
@@ -68,13 +51,17 @@ pub struct MangaScrappingParamsDto {
 }
 
 #[derive(Clone)]
-pub struct Processor<TClient: mangalib::Client + Clone> {
-    client: TClient,
+pub struct Processor<TClient: mangalib::Client> {
+    client: Arc<TClient>,
+    sender: reqwest::Client,
 }
 
-impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
-    pub fn new(client: TClient) -> Self {
-        Self { client }
+impl<TClient: mangalib::Client + 'static> Processor<TClient> {
+    pub fn new(client: TClient, sender: Option<reqwest::Client>) -> Self {
+        Self {
+            client: Arc::new(client),
+            sender: sender.unwrap_or_default(),
+        }
     }
 
     pub async fn process(
@@ -117,7 +104,6 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
         let chapters = chapters
             .into_iter()
             .map(|chapter| PublishedMangaChapter {
-                url: None,
                 chapter: chapter.chapter_number,
                 volume: chapter.chapter_volume,
                 images_urls: vec![],
@@ -135,8 +121,8 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
         dto: &MangaScrappingParamsDto,
         chrome_max_count: u16,
     ) -> Result<PublishedManga, Error> {
-        let chapter_urls_map: Arc<Mutex<HashMap<mangalib::MangaChapter, Vec<String>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let chapter_urls_map: Arc<DashMap<mangalib::MangaChapter, Vec<String>>> =
+            Arc::new(DashMap::new());
         let chapters = self.client.get_manga_chapters(&dto.slug).await?;
         let chapters = match self.filter_chapters(chapters, dto) {
             None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
@@ -151,15 +137,21 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
             let slug = dto.slug.to_string();
             let semaphore = semaphore.clone();
             let chapter = chapter.clone();
+            let client = Arc::clone(&self.client);
             handles.push(tokio::spawn(async move {
-                let _permit = semaphore.acquire().await?;
-                let result = retry!(
-                    mangalib::http_client::HttpClient::builder()
-                        .build()
-                        .get_manga_chapter_images(&slug, &chapter, index + 1, chapters_len)
-                        .await
-                )?;
-                urls.lock().await.insert(chapter, result);
+                #[allow(unused_variables)]
+                let permit = semaphore.acquire().await?;
+                let result = Self::retry(
+                    || async {
+                        client
+                            .get_manga_chapter_images(&slug, &chapter, index + 1, chapters_len)
+                            .await
+                    },
+                    5,
+                )
+                .await?;
+                urls.insert(chapter, result);
+
                 Ok::<(), Error>(())
             }));
         }
@@ -168,9 +160,7 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
             handle.await.map_err(|_| Error::Handle)??;
         }
 
-        let chapter_urls_map = chapter_urls_map.lock().await.clone();
-
-        self.prepare_manga_for_publish(&dto.slug, &chapters, &chapter_urls_map)
+        self.prepare_manga_for_publish(&dto.slug, &chapters, &*chapter_urls_map)
     }
 
     fn filter_chapters(
@@ -194,7 +184,7 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
         &self,
         slug: &str,
         chapters: &[mangalib::MangaChapter],
-        chapter_urls_map: &HashMap<mangalib::MangaChapter, Vec<String>>,
+        chapter_urls_map: &DashMap<mangalib::MangaChapter, Vec<String>>,
     ) -> Result<PublishedManga, Error> {
         let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
         for chapter in chapters {
@@ -205,7 +195,6 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
             };
 
             telegraph_urls.push(PublishedMangaChapter {
-                url: None,
                 chapter: chapter.chapter_number.clone(),
                 volume: chapter.chapter_volume.clone(),
                 images_urls: url_images.clone(),
@@ -223,13 +212,35 @@ impl<TClient: mangalib::Client + Clone + Send + Sync> Processor<TClient> {
         url: &str,
         manga: &PublishedManga,
     ) -> reqwest::Result<String> {
-        reqwest::Client::new()
-            .post(url)
-            .json(manga)
-            .send()
-            .await?
-            .text()
-            .await
+        self.sender.post(url).json(manga).send().await?.text().await
+    }
+
+    async fn retry<T, E: std::fmt::Debug, F>(
+        decorated: impl Fn() -> F,
+        max_retries: u32,
+    ) -> Result<T, E>
+    where
+        F: Future<Output = Result<T, E>>,
+    {
+        let mut backoff = Duration::from_millis(500);
+
+        for attempt in 1..=max_retries {
+            match decorated().await {
+                Ok(value) => return Ok(value),
+                Err(err) if attempt >= max_retries => return Err(err),
+                Err(err) => {
+                    error!(attempt = attempt, err = ?err, "Attempt failed");
+                    sleep(backoff).await;
+
+                    backoff = backoff
+                        .mul_f32(2.0)
+                        .add(Duration::from_millis(rand::rng().random_range(0..100)))
+                        .min(Duration::from_secs(30));
+                }
+            }
+        }
+
+        unreachable!();
     }
 }
 
@@ -241,7 +252,6 @@ pub struct PublishedManga {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PublishedMangaChapter {
-    pub url: Option<String>,
     pub chapter: String,
     pub volume: String,
     pub images_urls: Vec<String>,

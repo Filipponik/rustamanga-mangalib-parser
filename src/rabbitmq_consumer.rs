@@ -75,7 +75,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
     let mut consumer = create_consumer(&channel).await?;
 
     info!("Waiting for jobs");
-    let processor = Processor::new(HttpClient::builder().build());
+    let processor = Processor::new(HttpClient::builder().build(), None);
 
     while let Some(delivery) = consumer.next().await {
         let Ok(delivery) = delivery else {

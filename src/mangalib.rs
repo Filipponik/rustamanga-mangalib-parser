@@ -64,7 +64,7 @@ impl MangaChapter {
     }
 }
 
-pub trait Client {
+pub trait Client: Clone + Send + Sync {
     fn get_manga_chapter_images(
         &self,
         slug: &str,

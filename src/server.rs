@@ -74,7 +74,7 @@ pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
     let config = AppConfig::new(port, chrome_max_count);
     let state = Arc::new(AppState::new(
         config,
-        Processor::new(HttpClient::builder().build()),
+        Processor::new(HttpClient::builder().build(), None),
     ));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;
