@@ -121,9 +121,11 @@ impl HttpClient {
             .header("Referrer", &self.referrer_header)
             .header("Site-Id", &self.site_id_header)
             .send()
-            .await?
+            .await
+            .map_err(Error::ReqwestNetwork)?
             .text()
-            .await?;
+            .await
+            .map_err(Error::ReqwestResponseRead)?;
 
         Ok(serde_json::from_str(&response)?)
     }

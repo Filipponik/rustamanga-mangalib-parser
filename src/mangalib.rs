@@ -32,7 +32,9 @@ pub enum Error {
     #[error("Failed to get page content: {0}")]
     BrowserGetContent(String),
     #[error("Failed to fetch HTTP: {0}")]
-    Reqwest(#[from] reqwest::Error),
+    ReqwestNetwork(reqwest::Error),
+    #[error("Failed to read HTTP response: {0}")]
+    ReqwestResponseRead(reqwest::Error),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
