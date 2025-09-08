@@ -1,5 +1,5 @@
-version=0.9.1
-image=filipponik/mangalib
+version=0.9.2
+image=filipponik/rustamanga-mangalib-parser
 platforms=linux/amd64,linux/arm64
 
 # Build docker images
