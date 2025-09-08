@@ -183,18 +183,18 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
     fn prepare_manga_for_publish(
         &self,
         slug: &str,
-        chapters: &[mangalib::MangaChapter],
+        input_chapters: &[mangalib::MangaChapter],
         chapter_urls_map: &DashMap<mangalib::MangaChapter, Vec<String>>,
     ) -> Result<PublishedManga, Error> {
-        let mut telegraph_urls: Vec<PublishedMangaChapter> = vec![];
-        for chapter in chapters {
+        let mut output_chapters: Vec<PublishedMangaChapter> = vec![];
+        for chapter in input_chapters {
             let Some(url_images) = chapter_urls_map.get(chapter) else {
                 return Err(Error::ChapterNotFound {
                     chapter: chapter.clone(),
                 });
             };
 
-            telegraph_urls.push(PublishedMangaChapter {
+            output_chapters.push(PublishedMangaChapter {
                 chapter: chapter.chapter_number.clone(),
                 volume: chapter.chapter_volume.clone(),
                 images_urls: url_images.clone(),
@@ -203,7 +203,7 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
 
         Ok(PublishedManga {
             slug: slug.to_string(),
-            chapters: telegraph_urls,
+            chapters: output_chapters,
         })
     }
 
