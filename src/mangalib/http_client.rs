@@ -1,5 +1,5 @@
 use crate::mangalib::{Client, Error, MangaChapter};
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 use tracing::debug;
 
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
@@ -7,18 +7,18 @@ const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
 const REFERRER_HEADER: &str = "https://mangalib.org/";
 const SITE_ID_HEADER: &str = "1";
 
-#[derive(Deserialize, Debug, Clone)]
-struct ImageInnerList {
-    data: ImageInnerListData,
+#[derive(Deserialize, Debug)]
+struct ApiResponse<T> {
+    data: T,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct ImageInnerListData {
-    pages: Vec<ImageInner>,
+#[derive(Deserialize, Debug)]
+struct ImageResponse {
+    pages: Vec<Image>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct ImageInner {
+#[derive(Deserialize, Debug)]
+struct Image {
     id: u128,
     image: String,
     height: u32,
@@ -28,8 +28,8 @@ struct ImageInner {
     ratio: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct ChapterInner {
+#[derive(Deserialize, Debug)]
+struct Chapter {
     id: u128,
     index: u128,
     item_number: u128,
@@ -39,12 +39,13 @@ struct ChapterInner {
     name: Option<String>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-struct ChapterInnerList {
-    data: Vec<ChapterInner>,
+impl From<Chapter> for MangaChapter {
+    fn from(chapter: Chapter) -> Self {
+        Self::new(chapter.volume, chapter.number)
+    }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Builder {
     image_server_prefix: Option<String>,
     base_url: Option<String>,
@@ -111,10 +112,7 @@ impl HttpClient {
         Builder::default()
     }
 
-    async fn get<T>(&self, url: &str) -> Result<T, Error>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
+    async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T, Error> {
         let response = self
             .reqwest_client
             .get(url)
@@ -122,10 +120,16 @@ impl HttpClient {
             .header("Site-Id", &self.site_id_header)
             .send()
             .await
-            .map_err(Error::ReqwestNetwork)?
+            .map_err(|e| Error::ReqwestNetwork {
+                source: e,
+                url: url.to_string(),
+            })?
             .text()
             .await
-            .map_err(Error::ReqwestResponseRead)?;
+            .map_err(|e| Error::ReqwestResponseRead {
+                source: e,
+                url: url.to_string(),
+            })?;
 
         Ok(serde_json::from_str(&response)?)
     }
@@ -150,8 +154,8 @@ impl Client for HttpClient {
             "Searching manga chapter image urls",
         );
 
-        let image_inner_list: ImageInnerList = self.get(url).await?;
-        let images = image_inner_list
+        let image_response: ApiResponse<ImageResponse> = self.get(url).await?;
+        let images = image_response
             .data
             .pages
             .into_iter()
@@ -164,18 +168,18 @@ impl Client for HttpClient {
     async fn get_manga_chapters(&self, slug: &str) -> Result<Vec<MangaChapter>, Error> {
         let url = &format!("{}/api/manga/{slug}/chapters", self.base_url);
         debug!(manga_slug = slug, url = url, "Searching manga chapters",);
-        let chapter_inner_list: ChapterInnerList = self.get(url).await?;
+        let chapters_response: ApiResponse<Vec<Chapter>> = self.get(url).await?;
 
         debug!(
             manga_slug = slug,
             "Found {} chapters",
-            chapter_inner_list.data.len()
+            chapters_response.data.len()
         );
 
-        let chapters = chapter_inner_list
+        let chapters = chapters_response
             .data
             .into_iter()
-            .map(|chapter_inner| MangaChapter::new(chapter_inner.volume, chapter_inner.number))
+            .map(MangaChapter::from)
             .collect();
 
         Ok(chapters)

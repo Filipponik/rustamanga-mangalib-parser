@@ -31,10 +31,10 @@ pub enum Error {
     BrowserWaitElementTooLong(String),
     #[error("Failed to get page content: {0}")]
     BrowserGetContent(String),
-    #[error("Failed to fetch HTTP: {0}")]
-    ReqwestNetwork(reqwest::Error),
-    #[error("Failed to read HTTP response: {0}")]
-    ReqwestResponseRead(reqwest::Error),
+    #[error("Network error for URL {url}: {source}")]
+    ReqwestNetwork { source: reqwest::Error, url: String },
+    #[error("Failed to read response from {url}: {source}")]
+    ReqwestResponseRead { source: reqwest::Error, url: String },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
