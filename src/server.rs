@@ -16,13 +16,13 @@ use tracing::{error, info};
 const SCRAP_MANGA_ROUTE: &str = "/scrap-manga";
 
 #[derive(Clone)]
-struct AppState<TProcessor: Client + Clone> {
+struct AppState<TClient: Client> {
     config: AppConfig,
-    processor: processing::Processor<TProcessor>,
+    processor: processing::Processor<TClient>,
 }
 
-impl<TProcessor: Client + Clone> AppState<TProcessor> {
-    pub const fn new(config: AppConfig, processor: processing::Processor<TProcessor>) -> Self {
+impl<TClient: Client> AppState<TClient> {
+    pub const fn new(config: AppConfig, processor: processing::Processor<TClient>) -> Self {
         Self { config, processor }
     }
 }
@@ -91,15 +91,10 @@ pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
     Ok(())
 }
 
-async fn scrap_manga<TProcessor: Client + Clone + Send + Sync + 'static>(
-    State(state): State<Arc<AppState<TProcessor>>>,
+async fn scrap_manga<TClient: Client + 'static>(
+    State(state): State<Arc<AppState<TClient>>>,
     Json(payload): Json<ScrapMangaRequest>,
-) -> (StatusCode, Json<Value>)
-where
-    // Добавляем ограничение, что Processor должен создавать Send future
-    processing::Processor<TProcessor>: Send + Sync + 'static,
-{
-    // Извлекаем processor из state, чтобы избежать захвата всей state
+) -> (StatusCode, Json<Value>) {
     let processor = state.processor.clone();
     let chrome_max_count = state.config.chrome_max_count;
 
