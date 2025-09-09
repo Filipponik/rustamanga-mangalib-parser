@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::mangalib::{Client, Error, MangaChapter};
 use serde::{Deserialize, de::DeserializeOwned};
 use tracing::debug;
@@ -6,6 +8,7 @@ const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
 const REFERRER_HEADER: &str = "https://mangalib.org/";
 const SITE_ID_HEADER: &str = "1";
+const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Deserialize, Debug)]
 struct ApiResponse<T> {
@@ -51,6 +54,7 @@ pub struct Builder {
     base_url: Option<String>,
     referrer_header: Option<String>,
     site_id_header: Option<String>,
+    timeout: Option<Duration>,
     reqwest_client: Option<reqwest::Client>,
 }
 
@@ -75,6 +79,11 @@ impl Builder {
         self
     }
 
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
     pub fn reqwest_client(mut self, reqwest_client: reqwest::Client) -> Self {
         self.reqwest_client = Some(reqwest_client);
         self
@@ -94,6 +103,7 @@ impl Builder {
             site_id_header: self
                 .site_id_header
                 .unwrap_or_else(|| SITE_ID_HEADER.to_string()),
+            timeout: self.timeout.unwrap_or(DEFAULT_REQUEST_TIMEOUT),
             reqwest_client: self.reqwest_client.unwrap_or_default(),
         }
     }
@@ -105,6 +115,7 @@ pub struct HttpClient {
     base_url: String,
     referrer_header: String,
     site_id_header: String,
+    timeout: Duration,
     reqwest_client: reqwest::Client,
 }
 
@@ -119,6 +130,7 @@ impl HttpClient {
             .get(url)
             .header("Referrer", &self.referrer_header)
             .header("Site-Id", &self.site_id_header)
+            .timeout(self.timeout)
             .send()
             .await
             .map_err(|e| Error::ReqwestNetwork {

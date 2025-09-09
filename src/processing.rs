@@ -160,7 +160,7 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
             handle.await.map_err(|_| Error::Handle)??;
         }
 
-        self.prepare_manga_for_publish(&dto.slug, &chapters, &*chapter_urls_map)
+        self.prepare_manga_for_publish(&dto.slug, &chapters, &chapter_urls_map)
     }
 
     fn filter_chapters(
