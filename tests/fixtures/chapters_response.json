@@ -1,0 +1,105 @@
+{
+  "data": [
+    {
+      "id": 214970,
+      "index": 1,
+      "item_number": 1,
+      "volume": "1",
+      "number": "0",
+      "number_secondary": "1",
+      "name": "Пролог",
+      "branches_count": 1,
+      "branches": [
+        {
+          "id": 214970,
+          "branch_id": 6638,
+          "created_at": "2018-11-17T06:58:18.000000Z",
+          "teams": [
+            {
+              "id": 2460,
+              "slug": "assley-team",
+              "slug_url": "2460--assley-team",
+              "model": "team",
+              "name": "Assley Team",
+              "cover": {
+                "filename": "5T8bxtsG645F",
+                "thumbnail": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_thumb.jpg",
+                "default": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_250x350.jpg",
+                "md": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_250x350.jpg"
+              }
+            }
+          ],
+          "expired_type": 0,
+          "user": {
+            "username": "vehise",
+            "id": 91832
+          }
+        }
+      ],
+      "bundle_id": null
+    },
+    {
+      "id": 1767324,
+      "index": 2,
+      "item_number": 2,
+      "volume": "1",
+      "number": "1",
+      "number_secondary": "1",
+      "name": "",
+      "branches_count": 2,
+      "branches": [
+        {
+          "id": 1767324,
+          "branch_id": 6639,
+          "created_at": "2021-12-31T12:31:04.000000Z",
+          "teams": [
+            {
+              "id": 1520,
+              "slug": "newbie",
+              "slug_url": "1520--newbie",
+              "model": "team",
+              "name": "Ньюби",
+              "cover": {
+                "filename": "tIy3Y8FLlziP",
+                "thumbnail": "https://cover.imglib.info/uploads/team/newbie/cover/tIy3Y8FLlziP_thumb.jpg",
+                "default": "https://cover.imglib.info/uploads/team/newbie/cover/tIy3Y8FLlziP_250x350.jpg",
+                "md": "https://cover.imglib.info/uploads/team/newbie/cover/tIy3Y8FLlziP_250x350.jpg"
+              }
+            }
+          ],
+          "expired_type": 0,
+          "user": {
+            "username": "Trouble",
+            "id": 178894
+          }
+        },
+        {
+          "id": 214971,
+          "branch_id": 6638,
+          "created_at": "2018-11-17T06:58:19.000000Z",
+          "teams": [
+            {
+              "id": 2460,
+              "slug": "assley-team",
+              "slug_url": "2460--assley-team",
+              "model": "team",
+              "name": "Assley Team",
+              "cover": {
+                "filename": "5T8bxtsG645F",
+                "thumbnail": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_thumb.jpg",
+                "default": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_250x350.jpg",
+                "md": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_250x350.jpg"
+              }
+            }
+          ],
+          "expired_type": 0,
+          "user": {
+            "username": "vehise",
+            "id": 91832
+          }
+        }
+      ],
+      "bundle_id": null
+    }
+  ]
+}
