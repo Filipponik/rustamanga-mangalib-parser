@@ -1,0 +1,103 @@
+{
+    "data": {
+        "id": 214970,
+        "model": "chapter",
+        "volume": "1",
+        "number": "0",
+        "number_secondary": "1",
+        "name": "Пролог",
+        "slug": "214970",
+        "branch_id": 6638,
+        "manga_id": 7580,
+        "created_at": "2018-11-17T06:58:18.000000Z",
+        "expired_at": null,
+        "moderated": {
+            "id": 1,
+            "label": "Принято модерацией"
+        },
+        "likes_count": 60495,
+        "is_liked": false,
+        "is_viewed": false,
+        "expired_type": 0,
+        "teams": [
+            {
+                "id": 2460,
+                "slug": "assley-team",
+                "slug_url": "2460--assley-team",
+                "model": "team",
+                "name": "Assley Team",
+                "cover": {
+                    "filename": "5T8bxtsG645F",
+                    "thumbnail": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_thumb.jpg",
+                    "default": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_250x350.jpg",
+                    "md": "https://cover.imglib.info/uploads/team/assley-team/cover/5T8bxtsG645F_250x350.jpg"
+                },
+                "vk": "https://vk.com/assleyteam",
+                "discord": "https://discord.gg/9Re3Hcm",
+                "donate_enabled": false
+            }
+        ],
+        "bundle_id": null,
+        "bundle": null,
+        "publish_at": null,
+        "type": "chapter",
+        "pages": [
+            {
+                "id": 6385111,
+                "image": "1.png",
+                "slug": 1,
+                "external": 0,
+                "chunks": 1,
+                "chapter_id": 214970,
+                "created_at": "2019-10-01T06:17:09.000000Z",
+                "updated_at": "2024-03-06T14:09:21.000000Z",
+                "height": 8860,
+                "width": 720,
+                "url": "//manga/i-alone-level-up/chapters/214970/1.png",
+                "ratio": "0.0813"
+            },
+            {
+                "id": 6385112,
+                "image": "2.png",
+                "slug": 2,
+                "external": 0,
+                "chunks": 3,
+                "chapter_id": 214970,
+                "created_at": "2019-10-01T06:17:09.000000Z",
+                "updated_at": "2024-03-06T14:09:21.000000Z",
+                "height": 16788,
+                "width": 720,
+                "url": "//manga/i-alone-level-up/chapters/214970/2.png",
+                "ratio": "0.0429"
+            },
+            {
+                "id": 6385113,
+                "image": "3.png",
+                "slug": 3,
+                "external": 0,
+                "chunks": 2,
+                "chapter_id": 214970,
+                "created_at": "2019-10-01T06:17:09.000000Z",
+                "updated_at": "2024-03-06T14:09:21.000000Z",
+                "height": 14847,
+                "width": 720,
+                "url": "//manga/i-alone-level-up/chapters/214970/3.png",
+                "ratio": "0.0485"
+            },
+            {
+                "id": 6385114,
+                "image": "end.png",
+                "slug": 4,
+                "external": 0,
+                "chunks": 1,
+                "chapter_id": 214970,
+                "created_at": "2019-10-01T06:17:09.000000Z",
+                "updated_at": "2024-03-06T14:09:21.000000Z",
+                "height": 1752,
+                "width": 1114,
+                "url": "//manga/i-alone-level-up/chapters/214970/end.png",
+                "ratio": "0.6358"
+            }
+        ]
+    }
+}
