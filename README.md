@@ -127,6 +127,7 @@ Usage: ./rustamanga-mangalib-parser consume [OPTIONS]
 Options:
       --url <URL>            AMQP URI
       --browsers <BROWSERS>  Max chrome browsers count
+      --proxy <PROXY>        Proxy URI
   -h, --help                 Print help
 ```
 

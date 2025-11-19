@@ -27,6 +27,7 @@ fn get_settings() -> Command {
             Command::new("consume")
                 .about("Consume RabbitMQ queue")
                 .arg(arg!(--url <URL> "AMQP URI"))
+                .arg(arg!(--proxy <PROXY> "Proxy URI"))
                 .arg(arg!(--browsers <BROWSERS> "Max chrome browsers count"))
                 .arg_required_else_help(true),
         ])
@@ -62,9 +63,10 @@ pub async fn process_commands() -> Result<(), Error> {
         }
         Some(("consume", sub_matches)) => {
             let url = sub_matches.get_one::<String>("url").expect("required");
+            let proxy_str = sub_matches.get_one::<String>("proxy");
             let chrome_max_count = parse_chrome_max_count(sub_matches)?;
 
-            consume(url, chrome_max_count).await
+            consume(url, chrome_max_count, proxy_str.map(|x| x.as_str())).await
         }
         Some(("collect-resource-full", _sub_matches)) => {
             let iter = mangalib::search::get_manga_iter();
@@ -111,6 +113,6 @@ async fn send_resource(url: &str) -> Result<(), Error> {
     Ok(send_resource::send_resource(url).await?)
 }
 
-async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
-    Ok(rabbitmq_consumer::consume(url, chrome_max_count).await?)
+async fn consume(url: &str, chrome_max_count: u16, proxy_str: Option<&str>) -> Result<(), Error> {
+    Ok(rabbitmq_consumer::consume(url, chrome_max_count, proxy_str).await?)
 }

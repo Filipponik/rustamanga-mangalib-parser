@@ -65,7 +65,11 @@ pub enum Error {
     ParseDelivery(#[from] ParseDeliveryErrorType),
 }
 
-pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
+pub async fn consume(
+    url: &str,
+    chrome_max_count: u16,
+    proxy_str: Option<&str>,
+) -> Result<(), Error> {
     let channel = create_channel(url).await?;
     create_queue(&channel).await?;
     create_exchange(&channel).await?;
@@ -75,7 +79,7 @@ pub async fn consume(url: &str, chrome_max_count: u16) -> Result<(), Error> {
     let mut consumer = create_consumer(&channel).await?;
 
     info!("Waiting for jobs");
-    let processor = Processor::new(HttpClient::builder().build(), None);
+    let processor = Processor::new(build_client(proxy_str), None);
 
     while let Some(delivery) = consumer.next().await {
         let Ok(delivery) = delivery else {
@@ -194,4 +198,16 @@ async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), Amqp
         .basic_qos(prefetch_count, BasicQosOptions::default())
         .await
         .map_err(AmqpWrapperError::PrefetchSet)
+}
+
+fn build_client(proxy_str: Option<&str>) -> HttpClient {
+    let client_builder = if let Some(proxy) = proxy_str {
+        reqwest::ClientBuilder::new().proxy(reqwest::Proxy::all(proxy).unwrap())
+    } else {
+        reqwest::ClientBuilder::new()
+    };
+
+    HttpClient::builder()
+        .reqwest_client(client_builder.build().unwrap())
+        .build()
 }
