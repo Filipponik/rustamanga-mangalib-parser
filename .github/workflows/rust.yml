@@ -25,7 +25,7 @@ jobs:
       - name: Install cargo tools
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-audit cargo-nextest cargo-machete cargo-tarpaulin
+          tool: cargo-chef,cargo-audit,cargo-nextest,cargo-machete,cargo-tarpaulin
 
       - name: Audit
         run: cargo audit
@@ -43,6 +43,24 @@ jobs:
           -W clippy::missing_panics_doc
           -W clippy::panic_in_result_fn
           -W clippy::cargo_common_metadata
+
+      # Prepare dependency recipe for cargo-chef
+      - name: Cargo chef prepare
+        run: cargo chef prepare --recipe recipe.json
+
+      # Cache compiled dependencies keyed by the recipe
+      - name: Cache cargo chef
+        uses: actions/cache@v4
+        with:
+          path: |
+            target/chef
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-chef-${{ hashFiles('**/recipe.json') }}
+
+      # Build dependency layer once; subsequent steps reuse it
+      - name: Cargo chef cook
+        run: cargo chef cook --recipe recipe.json --all-features --all-targets --tests --profile dev
 
       - name: Test
         run: cargo nextest run
