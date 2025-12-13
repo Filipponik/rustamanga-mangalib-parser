@@ -46,7 +46,7 @@ jobs:
 
       # Prepare dependency recipe for cargo-chef
       - name: Cargo chef prepare
-        run: cargo chef prepare --recipe recipe.json
+        run: cargo chef prepare --recipe-path recipe.json
 
       # Cache compiled dependencies keyed by the recipe
       - name: Cache cargo chef
@@ -60,7 +60,7 @@ jobs:
 
       # Build dependency layer once; subsequent steps reuse it
       - name: Cargo chef cook
-        run: cargo chef cook --recipe recipe.json --all-features --all-targets --tests --profile dev
+        run: cargo chef cook --recipe-path recipe.json --all-features --all-targets --tests --profile dev
 
       - name: Test
         run: cargo nextest run
