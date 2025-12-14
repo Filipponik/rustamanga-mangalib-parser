@@ -63,7 +63,7 @@ jobs:
         run: cargo chef cook --recipe-path recipe.json --all-features --all-targets --tests --profile dev
 
       - name: Test
-        run: cargo nextest run
+        run: cargo nextest run --workspace --all-targets --all-features
 
       - name: Coverage check
         run: cargo tarpaulin --fail-under 80
