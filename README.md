@@ -1,10 +1,11 @@
 # 📚 Mangalib Parser
 
-> A fast and efficient Rust-based parser for Mangalib with multiple integration options
+> **A fast and efficient Rust-based parser for Mangalib with multiple integration options**
 
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-brightgreen.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.70+-brightgreen.svg)](https://www.rust-lang.org/)
 [![Version](https://img.shields.io/github/v/release/Filipponik/rustamanga-mangalib-parser?sort=semver&label=version&color=brightgreen)](https://github.com/Filipponik/rustamanga-mangalib-parser/releases/latest)
-[![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/Filipponik/rustamanga-mangalib-parser?color=brightgreen
+)](LICENSE)
 [![CI - Tests](https://github.com/Filipponik/rustamanga-mangalib-parser/actions/workflows/rust.yml/badge.svg?branch=master&event=push)](https://github.com/Filipponik/rustamanga-mangalib-parser/actions/workflows/rust.yml)
 [![Last Commit](https://img.shields.io/github/last-commit/Filipponik/rustamanga-mangalib-parser)](https://github.com/Filipponik/rustamanga-mangalib-parser/commits)
 
