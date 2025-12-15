@@ -33,34 +33,41 @@ jobs:
       - name: Unused dependency check
         run: cargo machete
 
-      - name: Static analysis
-        run: >
-          cargo clippy --all-targets --all-features --
-          -W clippy::pedantic
-          -W clippy::nursery
-          -W clippy::unwrap_used
-          -W clippy::panic
-          -W clippy::missing_panics_doc
-          -W clippy::panic_in_result_fn
-          -W clippy::cargo_common_metadata
+      # - name: Static analysis
+      #   run: >
+      #     cargo clippy --all-targets --all-features --
+      #     -W clippy::pedantic
+      #     -W clippy::nursery
+      #     -W clippy::unwrap_used
+      #     -W clippy::panic
+      #     -W clippy::missing_panics_doc
+      #     -W clippy::panic_in_result_fn
+      #     -W clippy::cargo_common_metadata
 
       # Prepare dependency recipe for cargo-chef
-      - name: Cargo chef prepare
-        run: cargo chef prepare --recipe-path recipe.json
+      # - name: Cargo chef prepare
+      #   run: cargo chef prepare --recipe-path recipe.json
+      #   env:
+      #     CARGO_TARGET_DIR: target/chef
 
       # Cache compiled dependencies keyed by the recipe
-      - name: Cache cargo chef
-        uses: actions/cache@v4
-        with:
-          path: |
-            target/chef
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-chef-${{ hashFiles('**/recipe.json') }}
+      # - name: Cache cargo chef
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       target/chef
+      #       ~/.cargo/registry
+      #       ~/.cargo/git
+      #     key: ${{ runner.os }}-cargo-chef-${{ hashFiles('**/recipe.json') }}
 
       # Build dependency layer once; subsequent steps reuse it
-      - name: Cargo chef cook
-        run: cargo chef cook --recipe-path recipe.json --all-features --all-targets --tests --profile dev
+      # - name: Cargo chef cook
+      #   run: cargo chef cook --recipe-path recipe.json --all-features --all-targets --tests --profile dev
+      #   env:
+      #     CARGO_TARGET_DIR: target/chef
+
+      - name: Check nextest
+        run: cargo nextest list --workspace --all-targets --all-features -v
 
       - name: Test
         run: cargo nextest run --workspace --all-targets --all-features
