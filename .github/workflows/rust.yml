@@ -53,10 +53,4 @@ jobs:
       - name: Coverage check
         env:
           CARGO_TARGET_DIR: target/tarpaulin
-        run: cargo tarpaulin --out Xml --output-dir target/tarpaulin --fail-under 10
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: target/tarpaulin/coverage.xml
-          fail_ci_if_error: true
+        run: cargo tarpaulin --fail-under 10
