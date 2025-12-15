@@ -119,7 +119,7 @@ impl Query {
     fn to_reqwest_format(&self) -> Vec<(String, String)> {
         let mut formatted = vec![];
         for field in &self.fields {
-            formatted.push(("fields[]".to_string(), field.to_string()));
+            formatted.push(("fields[]".to_string(), field.clone()));
         }
         for site_id in &self.site_ids {
             formatted.push(("site_id[]".to_string(), site_id.to_string()));
@@ -193,6 +193,10 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
     }
 }
 
+/// Returns a stream of manga previews fetched page by page.
+///
+/// # Panics
+/// Panics if constructing the rate limiter with a non-positive quota fails.
 pub fn get_manga_iter() -> impl Stream<Item = MangaPreview> {
     stream! {
         let quota = Quota::per_minute(NonZeroU32::new(30).expect("Bad quota argument"));

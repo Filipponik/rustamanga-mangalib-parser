@@ -64,6 +64,10 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
         }
     }
 
+    /// Processes an incoming scrap request using the configured client and sender.
+    ///
+    /// # Errors
+    /// Returns an error if fetching chapters, filtering chapters, or sending the processed manga fails.
     pub async fn process(
         &self,
         chrome_max_count: u16,
@@ -97,9 +101,8 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
         dto: &MangaScrappingParamsDto,
     ) -> Result<PublishedManga, Error> {
         let chapters = self.client.get_manga_chapters(&dto.slug).await?;
-        let chapters = match self.filter_chapters(chapters, dto) {
-            None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
-            Some(c) => c,
+        let Some(chapters) = Self::filter_chapters(chapters, dto) else {
+            return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() });
         };
         let chapters = chapters
             .into_iter()
@@ -124,9 +127,8 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
         let chapter_urls_map: Arc<DashMap<mangalib::MangaChapter, Vec<String>>> =
             Arc::new(DashMap::new());
         let chapters = self.client.get_manga_chapters(&dto.slug).await?;
-        let chapters = match self.filter_chapters(chapters, dto) {
-            None => return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() }),
-            Some(c) => c,
+        let Some(chapters) = Self::filter_chapters(chapters, dto) else {
+            return Err(Error::ChapterNotFoundForFilter { dto: dto.clone() });
         };
         let semaphore = Arc::new(Semaphore::new(chrome_max_count as usize));
 
@@ -134,7 +136,7 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
         let chapters_len = chapters.len();
         for (index, chapter) in chapters.iter().enumerate() {
             let urls = Arc::clone(&chapter_urls_map);
-            let slug = dto.slug.to_string();
+            let slug = dto.slug.clone();
             let semaphore = semaphore.clone();
             let chapter = chapter.clone();
             let client = Arc::clone(&self.client);
@@ -160,16 +162,15 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
             handle.await.map_err(|_| Error::Handle)??;
         }
 
-        self.prepare_manga_for_publish(&dto.slug, &chapters, &chapter_urls_map)
+        Self::prepare_manga_for_publish(&dto.slug, &chapters, &chapter_urls_map)
     }
 
     fn filter_chapters(
-        &self,
         chapters: Vec<mangalib::MangaChapter>,
         dto: &MangaScrappingParamsDto,
     ) -> Option<Vec<mangalib::MangaChapter>> {
         let (chapter_num, volume_num) = match (&dto.after_chapter, &dto.after_volume) {
-            (Some(c), Some(v)) => (c.to_string(), v.to_string()),
+            (Some(c), Some(v)) => (c.clone(), v.clone()),
             _ => return Some(chapters),
         };
 
@@ -181,7 +182,6 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
     }
 
     fn prepare_manga_for_publish(
-        &self,
         slug: &str,
         input_chapters: &[mangalib::MangaChapter],
         chapter_urls_map: &DashMap<mangalib::MangaChapter, Vec<String>>,

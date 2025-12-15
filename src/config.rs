@@ -17,8 +17,15 @@ static GUARD: OnceCell<WorkerGuard> = OnceCell::new();
 
 pub struct Logger;
 
+impl Default for Logger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[allow(clippy::unused_self)]
 impl Logger {
+    #[must_use]
     pub fn new() -> Self {
         dotenv::dotenv().ok();
         Self

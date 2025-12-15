@@ -63,8 +63,15 @@ pub enum Error {
     Amqp(#[from] AmqpWrapperError),
     #[error("Failed to parse payload {0}")]
     ParseDelivery(#[from] ParseDeliveryErrorType),
+    #[error("HTTP client build error {0}")]
+    HttpClientBuild(#[from] reqwest::Error),
 }
 
+/// Consumes messages from `RabbitMQ` and processes them.
+///
+/// # Errors
+/// Returns an error if connecting, declaring AMQP resources, parsing payloads,
+/// or acknowledging/nacking deliveries fails.
 pub async fn consume(
     url: &str,
     chrome_max_count: u16,
@@ -79,7 +86,8 @@ pub async fn consume(
     let mut consumer = create_consumer(&channel).await?;
 
     info!("Waiting for jobs");
-    let processor = Processor::new(build_client(proxy_str), None);
+    let client = build_client(proxy_str)?;
+    let processor = Processor::new(client, None);
 
     while let Some(delivery) = consumer.next().await {
         let Ok(delivery) = delivery else {
@@ -200,14 +208,16 @@ async fn set_prefetch(channel: &Channel, prefetch_count: u16) -> Result<(), Amqp
         .map_err(AmqpWrapperError::PrefetchSet)
 }
 
-fn build_client(proxy_str: Option<&str>) -> HttpClient {
-    let client_builder = if let Some(proxy) = proxy_str {
-        reqwest::ClientBuilder::new().proxy(reqwest::Proxy::all(proxy).unwrap())
-    } else {
-        reqwest::ClientBuilder::new()
+fn build_client(proxy_str: Option<&str>) -> Result<HttpClient, Error> {
+    let client_builder = match proxy_str {
+        Some(proxy) => {
+            let proxy = reqwest::Proxy::all(proxy).map_err(Error::HttpClientBuild)?;
+            reqwest::ClientBuilder::new().proxy(proxy)
+        }
+        None => reqwest::ClientBuilder::new(),
     };
 
-    HttpClient::builder()
-        .reqwest_client(client_builder.build().unwrap())
-        .build()
+    let client = client_builder.build().map_err(Error::HttpClientBuild)?;
+
+    Ok(HttpClient::builder().reqwest_client(client).build())
 }

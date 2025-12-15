@@ -49,6 +49,13 @@ pub enum Error {
     BadArgument(String),
 }
 
+/// Processes CLI commands and dispatches handlers.
+///
+/// # Errors
+/// Returns an error if an unknown command is supplied, argument parsing fails, or downstream handlers fail.
+///
+/// # Panics
+/// Panics if required CLI arguments are missing. This occurs when the clap parser cannot retrieve a required value.
 pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", sub_matches)) => {
@@ -66,7 +73,7 @@ pub async fn process_commands() -> Result<(), Error> {
             let proxy_str = sub_matches.get_one::<String>("proxy");
             let chrome_max_count = parse_chrome_max_count(sub_matches)?;
 
-            consume(url, chrome_max_count, proxy_str.map(|x| x.as_str())).await
+            consume(url, chrome_max_count, proxy_str.map(String::as_str)).await
         }
         Some(("collect-resource-full", _sub_matches)) => {
             let iter = mangalib::search::get_manga_iter();
@@ -90,19 +97,25 @@ pub async fn process_commands() -> Result<(), Error> {
 }
 
 fn parse_chrome_max_count(sub_matches: &ArgMatches) -> Result<u16, Error> {
-    sub_matches
-        .get_one::<String>("browsers")
-        .unwrap_or(&config::DEFAULT_CHROME_MAX_COUNT.to_string())
-        .parse::<u16>()
-        .map_err(|err| Error::BadArgument(format!("Failed to parse chrome max count: {err}")))
+    sub_matches.get_one::<String>("browsers").map_or_else(
+        || Ok(config::DEFAULT_CHROME_MAX_COUNT),
+        |value| {
+            value.parse::<u16>().map_err(|err| {
+                Error::BadArgument(format!("Failed to parse chrome max count: {err}"))
+            })
+        },
+    )
 }
 
 fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
-    sub_matches
-        .get_one::<String>("port")
-        .unwrap_or(&config::DEFAULT_APP_PORT.to_string())
-        .parse::<u16>()
-        .map_err(|err| Error::BadArgument(format!("Failed to parse port: {err}")))
+    sub_matches.get_one::<String>("port").map_or_else(
+        || Ok(config::DEFAULT_APP_PORT),
+        |value| {
+            value
+                .parse::<u16>()
+                .map_err(|err| Error::BadArgument(format!("Failed to parse port: {err}")))
+        },
+    )
 }
 
 async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {

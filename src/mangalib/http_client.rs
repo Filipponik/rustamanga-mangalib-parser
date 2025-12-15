@@ -23,7 +23,8 @@ struct ImageResponse {
 #[derive(Deserialize, Debug)]
 struct Image {
     id: u128,
-    image: String,
+    #[serde(rename = "image")]
+    file_name: String,
     height: u32,
     width: u32,
     url: String,
@@ -59,36 +60,43 @@ pub struct Builder {
 }
 
 impl Builder {
+    #[must_use]
     pub fn image_server_prefix(mut self, image_server_prefix: impl Into<String>) -> Self {
         self.image_server_prefix = Some(image_server_prefix.into());
         self
     }
 
+    #[must_use]
     pub fn base_url(mut self, base_url: impl Into<String>) -> Self {
         self.base_url = Some(base_url.into());
         self
     }
 
+    #[must_use]
     pub fn referrer_header(mut self, referrer_header: impl Into<String>) -> Self {
         self.referrer_header = Some(referrer_header.into());
         self
     }
 
+    #[must_use]
     pub fn site_id_header(mut self, site_id_header: impl Into<String>) -> Self {
         self.site_id_header = Some(site_id_header.into());
         self
     }
 
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
+    #[must_use]
     pub fn reqwest_client(mut self, reqwest_client: reqwest::Client) -> Self {
         self.reqwest_client = Some(reqwest_client);
         self
     }
 
+    #[must_use]
     pub fn build(self) -> HttpClient {
         HttpClient {
             image_server_prefix: self
@@ -120,6 +128,7 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
+    #[must_use]
     pub fn builder() -> Builder {
         Builder::default()
     }
