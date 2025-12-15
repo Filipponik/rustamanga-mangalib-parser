@@ -56,31 +56,37 @@ struct ChapterInnerList {
 }
 
 impl Builder {
+    #[must_use]
     pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
         self.user_agent = Some(user_agent.into());
         self
     }
 
+    #[must_use]
     pub fn accept_language(mut self, accept_language: impl Into<String>) -> Self {
         self.accept_language = Some(accept_language.into());
         self
     }
 
+    #[must_use]
     pub fn platform(mut self, platform: impl Into<String>) -> Self {
         self.platform = Some(platform.into());
         self
     }
 
+    #[must_use]
     pub fn image_server_prefix(mut self, image_server_prefix: impl Into<String>) -> Self {
         self.image_server_prefix = Some(image_server_prefix.into());
         self
     }
 
+    #[must_use]
     pub fn base_url(mut self, base_url: impl Into<String>) -> Self {
         self.base_url = Some(base_url.into());
         self
     }
 
+    #[must_use]
     pub fn build(self) -> HeadlessBrowserClient {
         HeadlessBrowserClient {
             user_agent: self.user_agent.unwrap_or_else(|| USER_AGENT.to_string()),
@@ -108,6 +114,7 @@ pub struct HeadlessBrowserClient {
 }
 
 impl HeadlessBrowserClient {
+    #[must_use]
     pub fn builder() -> Builder {
         Builder::default()
     }
