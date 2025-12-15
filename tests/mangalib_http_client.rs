@@ -15,12 +15,12 @@ async fn test_get_chapters_positive() {
         .match_header("Site-Id", "test_site_id")
         .with_status(200)
         .with_header("Content-Type", "application/json")
-        .with_body(&load_fixture("chapters_response.json").to_string())
+        .with_body(load_fixture("chapters_response.json").to_string())
         .create_async()
         .await;
 
     let client = HttpClient::builder()
-        .base_url(&server.url())
+        .base_url(server.url())
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_secs(2))
@@ -32,10 +32,11 @@ async fn test_get_chapters_positive() {
     // assert
     mock.assert();
     assert!(result.is_ok());
-    let result = result.unwrap();
+    let result = result.expect("Expected chapters response to succeed");
     assert_eq!(2, result.len());
     assert_eq!(result[0], MangaChapter::new("1", "0"));
     assert_eq!(result[1], MangaChapter::new("1", "1"));
+    drop(server);
 }
 
 #[tokio::test]
@@ -54,7 +55,7 @@ async fn test_get_chapters_bad_response() {
         .await;
 
     let client = HttpClient::builder()
-        .base_url(&server.url())
+        .base_url(server.url())
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_secs(2))
@@ -66,12 +67,9 @@ async fn test_get_chapters_bad_response() {
     // assert
     mock.assert();
     assert!(result.is_err());
-    let result = result.unwrap_err();
-    if let Error::SerdeParse(_source) = result {
-        assert!(true);
-    } else {
-        panic!("Unexpected error: {:?}", result);
-    }
+    let result = result.expect_err("Expected serde parse error");
+    assert!(matches!(result, Error::SerdeParse(_)));
+    drop(server);
 }
 
 #[tokio::test]
@@ -89,18 +87,13 @@ async fn test_get_chapters_server_down() {
 
     // assert
     assert!(result.is_err());
-    let result = result.unwrap_err();
-    if let Error::ReqwestNetwork {
-        source: _source,
-        url,
-    } = result
-    {
+    let result = result.expect_err("Expected chapters network error");
+    assert!(matches!(result, Error::ReqwestNetwork { .. }));
+    if let Error::ReqwestNetwork { url, .. } = result {
         assert_eq!(
             "http://localhost:54321/api/manga/i-alone-level-up/chapters",
             url
         );
-    } else {
-        panic!("Unexpected error: {:?}", result);
     }
 }
 
@@ -117,12 +110,12 @@ async fn test_get_chapter_images_positive() {
         .match_header("Site-Id", "test_site_id")
         .with_status(200)
         .with_header("Content-Type", "application/json")
-        .with_body(&load_fixture("images_response.json").to_string())
+        .with_body(load_fixture("images_response.json").to_string())
         .create_async()
         .await;
 
     let client = HttpClient::builder()
-        .base_url(&server.url())
+        .base_url(server.url())
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
@@ -137,7 +130,7 @@ async fn test_get_chapter_images_positive() {
     // assert
     mock.assert();
     assert!(result.is_ok());
-    let result = result.unwrap();
+    let result = result.expect("Expected chapter images response to succeed");
     assert_eq!(4, result.len());
     assert_eq!(
         result[0],
@@ -155,6 +148,7 @@ async fn test_get_chapter_images_positive() {
         result[3],
         "http://localhost:54321//manga/i-alone-level-up/chapters/214970/end.png"
     );
+    drop(server);
 }
 
 #[tokio::test]
@@ -175,7 +169,7 @@ async fn test_get_chapter_images_bad_response() {
         .await;
 
     let client = HttpClient::builder()
-        .base_url(&server.url())
+        .base_url(server.url())
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
@@ -190,12 +184,9 @@ async fn test_get_chapter_images_bad_response() {
     // assert
     mock.assert();
     assert!(result.is_err());
-    let result = result.unwrap_err();
-    if let Error::SerdeParse(_source) = result {
-        assert!(true);
-    } else {
-        panic!("Unexpected error: {:?}", result);
-    }
+    let result = result.expect_err("Expected serde parse error");
+    assert!(matches!(result, Error::SerdeParse(_)));
+    drop(server);
 }
 
 #[tokio::test]
@@ -216,17 +207,12 @@ async fn test_get_chapter_images_server_down() {
 
     // assert
     assert!(result.is_err());
-    let result = result.unwrap_err();
-    if let Error::ReqwestNetwork {
-        source: _source,
-        url,
-    } = result
-    {
+    let result = result.expect_err("Expected chapter images network error");
+    assert!(matches!(result, Error::ReqwestNetwork { .. }));
+    if let Error::ReqwestNetwork { url, .. } = result {
         assert_eq!(
             "http://localhost:54321/api/manga/i-alone-level-up/chapter?number=0&volume=1",
             url
         );
-    } else {
-        panic!("Unexpected error: {result:?}");
     }
 }
