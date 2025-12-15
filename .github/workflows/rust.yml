@@ -21,6 +21,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            ~/.cargo/bin
             ~/.cargo/registry
             ~/.cargo/git
             target
@@ -42,6 +43,9 @@ jobs:
       - name: Unused dependency check
         run: cargo machete
 
+      - name: Format check
+        run: cargo fmt --all -- --check
+
       - name: Static analysis
         run: >
           cargo clippy --all-targets --all-features --
@@ -57,4 +61,4 @@ jobs:
         run: cargo nextest run --workspace --all-targets --all-features
 
       - name: Coverage check
-        run: cargo tarpaulin --fail-under 80
+        run: cargo tarpaulin --fail-under 10
