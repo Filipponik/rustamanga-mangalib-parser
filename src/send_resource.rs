@@ -13,6 +13,9 @@ pub enum Error {
     Send(#[from] reqwest::Error),
 }
 
+/// # Errors
+/// - [`Error::Parse`]: Error while parsing mangalib json
+/// - [`Error::Send`]: Error sending resource to url
 pub async fn send_resource(url: &str) -> Result<(), Error> {
     let mangas: Vec<MangaPreview> =
         serde_json::from_str(MANGALIB_STATIC_RESOURCE).map_err(Error::Parse)?;

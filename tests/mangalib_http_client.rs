@@ -227,6 +227,6 @@ async fn test_get_chapter_images_server_down() {
             url
         );
     } else {
-        panic!("Unexpected error: {:?}", result);
+        panic!("Unexpected error: {result:?}");
     }
 }
