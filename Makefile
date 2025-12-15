@@ -1,4 +1,4 @@
-version=0.9.3
+version=0.9.4
 image=filipponik/rustamanga-mangalib-parser
 platforms=linux/amd64,linux/arm64
 

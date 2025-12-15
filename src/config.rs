@@ -27,7 +27,7 @@ impl Default for Logger {
 impl Logger {
     #[must_use]
     pub fn new() -> Self {
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
         Self
     }
 
