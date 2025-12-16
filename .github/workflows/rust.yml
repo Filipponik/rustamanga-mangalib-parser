@@ -38,15 +38,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Static analysis
-        run: >
-          cargo clippy --all-targets --all-features --
-          -W clippy::pedantic
-          -W clippy::nursery
-          -W clippy::unwrap_used
-          -W clippy::panic
-          -W clippy::missing_panics_doc
-          -W clippy::panic_in_result_fn
-          -W clippy::cargo_common_metadata
+        run: cargo clippy --all-targets --all-features
 
       - name: Test
         run: cargo nextest run --workspace --all-targets --all-features
