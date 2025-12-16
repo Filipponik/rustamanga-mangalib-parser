@@ -18,7 +18,7 @@
 - 🐰 **RabbitMQ Integration** - Consume tasks from message queues
 - 🎯 **Multiple Deployment Options** - CLI, server, or consumer mode
 - 🔄 **Concurrent Processing** - Handle multiple manga scraping tasks simultaneously
-- 🎨 **Modern Stack** - Uses Axum, Tokio, and headless Chrome
+- 🎨 **Modern Stack** - Uses Axum + Tokio
 
 ---
 
@@ -40,7 +40,6 @@
 
 Before you begin, ensure you have the following installed:
 
-- **Google Chrome** or **Chromium** - Required for headless browsing
 - **Rust 1.70+** - For building from source (optional if using pre-built binaries)
 
 ---
@@ -93,14 +92,13 @@ Usage: ./rustamanga-mangalib-parser serve [OPTIONS]
 
 Options:
       --port <PORT>          Web server port
-      --browsers <BROWSERS>  Max chrome browsers count
   -h, --help                 Print help
 ```
 
 **Example:**
 
 ```bash
-./rustamanga-mangalib-parser serve --port=12345 --browsers=16
+./rustamanga-mangalib-parser serve --port=12345
 ```
 
 The server will be available at `http://localhost:{PORT}`
@@ -129,7 +127,6 @@ Usage: ./rustamanga-mangalib-parser consume [OPTIONS]
 
 Options:
       --url <URL>            AMQP URI
-      --browsers <BROWSERS>  Max chrome browsers count
       --proxy <PROXY>        Proxy URI
   -h, --help                 Print help
 ```
@@ -137,7 +134,7 @@ Options:
 **Example:**
 
 ```bash
-./rustamanga-mangalib-parser consume --url=amqp://guest:guest@localhost:5672 --browsers=16
+./rustamanga-mangalib-parser consume --url=amqp://guest:guest@localhost:5672
 ```
 
 ---
@@ -166,7 +163,6 @@ rustamanga-mangalib-parser/
 ### Configuration
 
 - **Port Settings** - Configure via `--port` flag in serve mode
-- **Browser Count** - Adjust concurrent browser instances with `--browsers`
 - **AMQP URL** - Set RabbitMQ connection string with `--url` in consume mode
 
 ---
