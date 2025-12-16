@@ -1,7 +1,8 @@
 use std::{
+    io::Write,
     net::SocketAddr,
     sync::{
-        Arc,
+        Arc, Mutex as StdMutex, Once, OnceLock,
         atomic::{AtomicUsize, Ordering},
     },
     time::Duration,
@@ -21,8 +22,48 @@ use tokio::{
     net::TcpListener,
     sync::{Mutex, oneshot},
 };
+use tracing::Level;
+use tracing_subscriber;
 
 const MANGALIB_STATIC_RESOURCE: &str = include_str!("../resource/json/mangalib_manga_list.json");
+
+struct TestWriter {
+    buf: Arc<StdMutex<Vec<u8>>>,
+}
+
+impl Write for TestWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut lock = self.buf.lock().expect("log buffer poisoned");
+        lock.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn init_tracing() -> Arc<StdMutex<Vec<u8>>> {
+    static LOG_BUF: OnceLock<Arc<StdMutex<Vec<u8>>>> = OnceLock::new();
+    static LOG_INIT: Once = Once::new();
+
+    let buf = LOG_BUF
+        .get_or_init(|| Arc::new(StdMutex::new(Vec::new())))
+        .clone();
+
+    LOG_INIT.call_once(|| {
+        let writer_buf = buf.clone();
+        let _ = tracing_subscriber::fmt()
+            .with_max_level(Level::ERROR)
+            .with_ansi(false)
+            .with_writer(move || TestWriter {
+                buf: writer_buf.clone(),
+            })
+            .try_init();
+    });
+
+    buf
+}
 
 #[derive(Deserialize)]
 struct IncomingPreview {
@@ -155,4 +196,22 @@ async fn send_resource_posts_first_mid_last_entries() {
         assert_eq!(actual.url, expected.url);
         assert_eq!(actual.image_url, expected.image_url);
     }
+}
+
+#[tokio::test]
+async fn send_resource_logs_errors_on_failure() {
+    let buf = init_tracing();
+    buf.lock().expect("log buffer poisoned").clear();
+
+    let url = "http://127.0.0.1:1/";
+
+    let result = send_resource(url).await;
+    assert!(result.is_ok(), "send_resource should swallow send errors");
+
+    let logs = String::from_utf8(buf.lock().expect("log buffer poisoned").clone())
+        .expect("logs should be utf8");
+    assert!(
+        logs.contains("Failed to send resource"),
+        "expected error log in send_resource"
+    );
 }
