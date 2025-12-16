@@ -207,3 +207,68 @@ impl Client for HttpClient {
         Ok(chapters)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_client_builder_empty() {
+        let builder = Builder::default();
+        assert!(builder.image_server_prefix.is_none());
+        assert!(builder.base_url.is_none());
+        assert!(builder.referrer_header.is_none());
+        assert!(builder.site_id_header.is_none());
+        assert!(builder.timeout.is_none());
+        assert!(builder.reqwest_client.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_client_builder_change_state() {
+        let builder = Builder::default()
+            .image_server_prefix("test")
+            .base_url("test2")
+            .referrer_header("test3")
+            .site_id_header("test4")
+            .timeout(Duration::from_secs(12345))
+            .reqwest_client(reqwest::Client::new());
+
+        assert_eq!(builder.image_server_prefix.unwrap(), "test");
+        assert_eq!(builder.base_url.unwrap(), "test2");
+        assert_eq!(builder.referrer_header.unwrap(), "test3");
+        assert_eq!(builder.site_id_header.unwrap(), "test4");
+        assert_eq!(builder.timeout.unwrap(), Duration::from_secs(12345));
+        assert!(builder.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
+    }
+
+    #[tokio::test]
+    async fn test_client_builder_build_all_filled() {
+        let client = Builder::default()
+            .image_server_prefix("test")
+            .base_url("test2")
+            .referrer_header("test3")
+            .site_id_header("test4")
+            .timeout(Duration::from_secs(12345))
+            .reqwest_client(reqwest::Client::new())
+            .build();
+
+        assert_eq!(client.image_server_prefix, "test");
+        assert_eq!(client.base_url, "test2");
+        assert_eq!(client.referrer_header, "test3");
+        assert_eq!(client.site_id_header, "test4");
+        assert_eq!(client.timeout, Duration::from_secs(12345));
+        // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
+    }
+
+    #[tokio::test]
+    async fn test_client_builder_build_all_default() {
+        let client = Builder::default().build();
+
+        assert_eq!(client.image_server_prefix, "https://img33.imgslib.link");
+        assert_eq!(client.base_url, "https://api.cdnlibs.org");
+        assert_eq!(client.referrer_header, "https://mangalib.org/");
+        assert_eq!(client.site_id_header, "1");
+        assert_eq!(client.timeout, Duration::from_secs(60));
+        // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
+    }
+}
