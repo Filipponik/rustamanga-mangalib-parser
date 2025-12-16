@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-#[cfg(feature = "browser_client")]
-pub mod browser_client;
 mod deserializers;
 #[cfg(feature = "http_client")]
 pub mod http_client;
