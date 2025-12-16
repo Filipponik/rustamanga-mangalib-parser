@@ -1,7 +1,12 @@
 use crate::mangalib::MangaPreview;
 use async_stream::stream;
 use futures::Stream;
-use governor::{DefaultKeyedRateLimiter, Quota};
+use governor::{
+    DefaultDirectRateLimiter, NotUntil, Quota, RateLimiter,
+    clock::{Clock, ReasonablyRealtime},
+    middleware::RateLimitingMiddleware,
+    state::{DirectStateStore, NotKeyed},
+};
 use serde::Serialize;
 use std::num::NonZeroU32;
 use thiserror::Error;
@@ -144,16 +149,18 @@ impl Query {
 }
 
 #[derive(Debug, Error)]
-pub enum SendingError {
+pub enum SearchError {
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("Deserialize error: {0}")]
     Deserialize(reqwest::Error),
     #[error("Runtime create error: {0}")]
     RuntimeCreate(#[from] std::io::Error),
+    #[error("Bad quota size: {0}")]
+    BadQuotaSize(u32),
 }
 
-async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SendingError> {
+async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SearchError> {
     debug!(page = query.page, "Requesting page");
 
     let response = client
@@ -188,24 +195,40 @@ async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPrevie
         Err(err) => {
             error!(page = query.page, "Error while parsing manga: {:?}", err);
 
-            Err(SendingError::Deserialize(err))
+            Err(SearchError::Deserialize(err))
         }
     }
 }
 
+/// # Errors
+/// - [`SearchError::BadQuotaSize`] if the quota size is invalid (`NonZeroU32`)
+pub fn get_manga_iter_default_rate_limiter(
+    per_minute: u32,
+) -> Result<impl Stream<Item = MangaPreview>, SearchError> {
+    let quota = Quota::per_minute(
+        NonZeroU32::new(per_minute).ok_or_else(|| SearchError::BadQuotaSize(per_minute))?,
+    );
+    let rate_limiter = DefaultDirectRateLimiter::direct(quota);
+
+    Ok(get_manga_iter(rate_limiter))
+}
+
 /// Returns a stream of manga previews fetched page by page.
-///
-/// # Panics
-/// Panics if constructing the rate limiter with a non-positive quota fails.
-pub fn get_manga_iter() -> impl Stream<Item = MangaPreview> {
+/// Can be used with any not keyed rate limiter.
+pub fn get_manga_iter<S, C, M>(
+    rate_limiter: RateLimiter<NotKeyed, S, C, M>,
+) -> impl Stream<Item = MangaPreview>
+where
+    S: DirectStateStore,
+    C: Clock + ReasonablyRealtime,
+    M: RateLimitingMiddleware<C::Instant, NegativeOutcome = NotUntil<C::Instant>>,
+{
     stream! {
-        let quota = Quota::per_minute(NonZeroU32::new(30).expect("Bad quota argument"));
-        let rate_limiter = DefaultKeyedRateLimiter::keyed(quota);
         let client = reqwest::Client::new();
 
         let mut page_num = 1;
         loop {
-            rate_limiter.until_key_ready(&"default").await;
+            rate_limiter.until_ready().await;
             if let Ok(page) = send(&client, &Query::new_only_page(page_num)).await {
                 if page.is_empty() {
                     break;
