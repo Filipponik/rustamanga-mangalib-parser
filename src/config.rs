@@ -1,7 +1,7 @@
 pub const DEFAULT_APP_PORT: u16 = 8000;
 pub const DEFAULT_CHROME_MAX_COUNT: u16 = 16;
 
-pub fn config_tracing() -> () {
+pub fn config_tracing() {
     tracing_subscriber::fmt()
         .with_level(true)
         .with_file(true)
@@ -9,5 +9,5 @@ pub fn config_tracing() -> () {
         .with_thread_names(true)
         .with_thread_ids(true)
         .with_env_filter("rustamanga_mangalib_parser=debug")
-        .init()
+        .init();
 }
