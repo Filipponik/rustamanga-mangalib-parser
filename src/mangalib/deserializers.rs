@@ -18,3 +18,33 @@ where
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::to_string;
+    use serde_json::Deserializer;
+
+    #[test]
+    fn deserializes_number_to_string() {
+        let mut de = Deserializer::from_str("123");
+        let result = to_string(&mut de).unwrap();
+        assert_eq!(result, "123");
+    }
+
+    #[test]
+    fn deserializes_string_value() {
+        let mut de = Deserializer::from_str("\"hello\"");
+        let result = to_string(&mut de).unwrap();
+        assert_eq!(result, "hello");
+    }
+
+    #[test]
+    fn rejects_unsupported_type() {
+        let mut de = Deserializer::from_str("true");
+        let err = to_string(&mut de).unwrap_err();
+        assert!(
+            format!("{err}").contains("expected a number or string"),
+            "unexpected error message: {err}"
+        );
+    }
+}
