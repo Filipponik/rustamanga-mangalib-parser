@@ -1,3 +1,4 @@
+pub mod collect_resource;
 pub mod command;
 pub mod config;
 pub mod mangalib;

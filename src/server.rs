@@ -71,8 +71,8 @@ pub enum Error {
 }
 
 /// # Errors
-/// - [`ConfigErrorType`]: Error while parsing config
-/// - [`ServerError`]: Server error
+/// - [`Error::Config`]: Error while parsing config
+/// - [`Error::ServerError`]: Server error
 pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
     let config = AppConfig::new(port, chrome_max_count);
     let state = Arc::new(AppState::new(

@@ -1,6 +1,7 @@
 use command::process_commands;
 use tracing::error;
 
+mod collect_resource;
 mod command;
 mod config;
 mod mangalib;

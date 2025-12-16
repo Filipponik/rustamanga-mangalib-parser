@@ -1,10 +1,6 @@
-use crate::mangalib::MangaPreview;
-use crate::{config, mangalib, rabbitmq_consumer, send_resource, server};
+use crate::{collect_resource, config, rabbitmq_consumer, send_resource, server};
 use clap::{ArgMatches, Command, arg};
-use futures::StreamExt;
 use thiserror::Error;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
 
 #[allow(clippy::cognitive_complexity)]
 fn get_settings() -> Command {
@@ -47,15 +43,14 @@ pub enum Error {
     Consume(#[from] rabbitmq_consumer::Error),
     #[error("Failed to parse arguments: {0}")]
     BadArgument(String),
+    #[error("Failed to collect resource: {0}")]
+    CollectResource(#[from] collect_resource::Error),
 }
 
 /// Processes CLI commands and dispatches handlers.
 ///
 /// # Errors
 /// Returns an error if an unknown command is supplied, argument parsing fails, or downstream handlers fail.
-///
-/// # Panics
-/// Panics if required CLI arguments are missing. This occurs when the clap parser cannot retrieve a required value.
 pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", sub_matches)) => {
@@ -65,31 +60,22 @@ pub async fn process_commands() -> Result<(), Error> {
             serve(port, chrome_max_count).await
         }
         Some(("send-resource", sub_matches)) => {
-            let url = sub_matches.get_one::<String>("url").expect("required");
+            let url = sub_matches
+                .get_one::<String>("url")
+                .ok_or_else(|| Error::BadArgument("url is required".to_string()))?;
             send_resource(url).await
         }
         Some(("consume", sub_matches)) => {
-            let url = sub_matches.get_one::<String>("url").expect("required");
-            let proxy_str = sub_matches.get_one::<String>("proxy");
+            let url = sub_matches
+                .get_one::<String>("url")
+                .ok_or_else(|| Error::BadArgument("url is required".to_string()))?;
+            let proxy_str = sub_matches.get_one::<String>("proxy").map(String::as_str);
             let chrome_max_count = parse_chrome_max_count(sub_matches)?;
 
-            consume(url, chrome_max_count, proxy_str.map(String::as_str)).await
+            consume(url, chrome_max_count, proxy_str).await
         }
         Some(("collect-resource-full", _sub_matches)) => {
-            let iter = mangalib::search::get_manga_iter();
-            let output = iter.collect::<Vec<MangaPreview>>().await;
-            let mut file = File::create("resource/json/mangalib_manga_list.json")
-                .await
-                .expect("Cannot create resource/json/mangalib_manga_list.json file");
-            file.write_all(
-                serde_json::to_string(&output)
-                    .expect("Cannot serialize output to json")
-                    .as_bytes(),
-            )
-            .await
-            .expect("Cannot write to file");
-
-            Ok(())
+            Ok(collect_resource::collect_resource().await?)
         }
         Some((command, _)) => Err(Error::NoSuchCommand(command.to_string())),
         None => Err(Error::NoCommandSpecified),
