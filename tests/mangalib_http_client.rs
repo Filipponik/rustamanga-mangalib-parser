@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use mockito::{Matcher, Server};
 use rustamanga_mangalib_parser::mangalib::{Client, Error, MangaChapter, http_client::HttpClient};
 use utils::load_fixture;
