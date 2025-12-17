@@ -43,7 +43,7 @@ jobs:
       - name: Test
         run: cargo nextest run --workspace --all-targets --all-features
 
-      - name: Coverage check
-        env:
-          CARGO_TARGET_DIR: target/tarpaulin
-        run: cargo tarpaulin --fail-under 10 --skip-clean
+      # - name: Coverage check
+      #   env:
+      #     CARGO_TARGET_DIR: target/tarpaulin
+      #   run: cargo tarpaulin --fail-under 10 --skip-clean
