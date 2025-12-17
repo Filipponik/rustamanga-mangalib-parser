@@ -3,9 +3,6 @@ use std::{fs, process};
 use serde_json::Value;
 
 /// Loads JSON fixture by name.
-///
-/// # Panics
-/// Panics if fixture file cannot be read or parsed.
 #[must_use]
 pub fn load_fixture(fixture_name: &str) -> Value {
     let path = format!("tests/fixtures/{fixture_name}");
