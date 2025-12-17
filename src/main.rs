@@ -11,12 +11,10 @@ mod send_resource;
 mod server;
 
 #[tokio::main]
-async fn main() -> Result<(), command::Error> {
+async fn main() {
     dotenvy::dotenv().ok();
     config::config_tracing();
     if let Err(err) = process_commands().await {
         error!("Error: {}", err);
     }
-
-    Ok(())
 }
