@@ -4,14 +4,20 @@ use serde_json::Value;
 
 /// Loads JSON fixture by name.
 ///
-/// # Panics
-/// Panics if the fixture cannot be read or parsed.
-#[must_use]
+/// # Errors
+/// - [`FixtureError::ReadError`] if the fixture cannot be read.
+/// - [`FixtureError::ParseError`] if the fixture cannot be parsed.
 #[allow(clippy::panic)]
-pub fn load_fixture(fixture_name: &str) -> Value {
+pub fn load_fixture(fixture_name: &str) -> Result<Value, FixtureError> {
     let path = format!("tests/fixtures/{fixture_name}");
-    let content = fs::read_to_string(&path)
-        .unwrap_or_else(|err| panic!("Failed to read fixture {fixture_name}: {err}"));
-    serde_json::from_str(&content)
-        .unwrap_or_else(|err| panic!("Failed to parse JSON fixture {fixture_name}: {err}"))
+    let content = fs::read_to_string(&path)?;
+    Ok(serde_json::from_str(&content)?)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum FixtureError {
+    #[error("Failed to read fixture {0}")]
+    ReadError(#[from] std::io::Error),
+    #[error("Failed to parse JSON fixture {0}")]
+    ParseError(#[from] serde_json::Error),
 }

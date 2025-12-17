@@ -17,7 +17,11 @@ async fn test_get_chapters_positive() {
         .match_header("Site-Id", "test_site_id")
         .with_status(200)
         .with_header("Content-Type", "application/json")
-        .with_body(load_fixture("chapters_response.json").to_string())
+        .with_body(
+            load_fixture("chapters_response.json")
+                .expect("Failed to load fixture")
+                .to_string(),
+        )
         .create_async()
         .await;
 
@@ -112,7 +116,11 @@ async fn test_get_chapter_images_positive() {
         .match_header("Site-Id", "test_site_id")
         .with_status(200)
         .with_header("Content-Type", "application/json")
-        .with_body(load_fixture("images_response.json").to_string())
+        .with_body(
+            load_fixture("images_response.json")
+                .expect("Failed to load fixture")
+                .to_string(),
+        )
         .create_async()
         .await;
 
