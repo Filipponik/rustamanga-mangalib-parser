@@ -1,8 +1,9 @@
 use std::time::Duration;
 
 use crate::mangalib::{Client, Error, MangaChapter, MangaListItem};
-use reqwest::RequestBuilder;
+use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, de::DeserializeOwned};
+use serde_json::{Value, json};
 use tracing::debug;
 
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
@@ -12,23 +13,23 @@ const SITE_ID_HEADER: &str = "1";
 const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Deserialize, Debug)]
-struct ApiResponse<T> {
-    data: T,
+pub struct ApiResponse<T> {
+    pub data: T,
 }
 
 #[derive(Deserialize, Debug)]
-struct ApiResponseWithPagination<T> {
-    data: T,
-    meta: Meta,
+pub struct ApiResponseWithPagination<T> {
+    pub data: T,
+    pub meta: Meta,
 }
 
 #[derive(Deserialize, Debug)]
-struct Meta {
-    current_page: u32,
-    from: Option<u32>,
-    to: Option<u32>,
-    page: u32,
-    next_page_url: bool,
+pub struct Meta {
+    pub current_page: u32,
+    pub from: Option<u32>,
+    pub to: Option<u32>,
+    pub page: u32,
+    pub next_page_url: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -37,19 +38,19 @@ struct ImageResponse {
 }
 
 #[derive(serde::Deserialize)]
-struct BookmarkItem {
-    meta: Option<BookmarkMeta>,
-    media: BookmarkMedia,
+pub struct BookmarkItem {
+    pub meta: Option<BookmarkMeta>,
+    pub media: BookmarkMedia,
 }
 
 #[derive(serde::Deserialize)]
-struct BookmarkMedia {
-    slug: String,
+pub struct BookmarkMedia {
+    pub slug: String,
 }
 
 #[derive(serde::Deserialize)]
-struct BookmarkMeta {
-    item_number: Option<u32>,
+pub struct BookmarkMeta {
+    pub item_number: Option<u32>,
 }
 
 impl From<BookmarkItem> for MangaListItem {
@@ -57,6 +58,58 @@ impl From<BookmarkItem> for MangaListItem {
         Self {
             slug: item.media.slug,
             index: item.meta.and_then(|meta| meta.item_number),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AccessToken(String);
+
+impl AccessToken {
+    #[must_use]
+    pub fn new(token: impl Into<String>) -> Self {
+        Self(token.into())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RefreshToken(String);
+
+impl RefreshToken {
+    #[must_use]
+    pub fn new(token: impl Into<String>) -> Self {
+        Self(token.into())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TokenPair {
+    pub access_token: AccessToken,
+    pub refresh_token: RefreshToken,
+}
+
+impl TokenPair {
+    #[must_use]
+    pub const fn new(access_token: AccessToken, refresh_token: RefreshToken) -> Self {
+        Self {
+            access_token,
+            refresh_token,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct NewTokenPair {
+    pub access_token: AccessToken,
+    pub refresh_token: RefreshToken,
+    pub expires_in: u64,
+}
+
+impl From<NewTokenPair> for TokenPair {
+    fn from(pair: NewTokenPair) -> Self {
+        Self {
+            access_token: pair.access_token,
+            refresh_token: pair.refresh_token,
         }
     }
 }
@@ -169,10 +222,10 @@ pub struct HttpClient {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct BookmarkListItem {
-    id: u32,
-    name: String,
-    site_ids: Vec<u32>,
+pub struct BookmarkListItem {
+    pub id: u32,
+    pub name: String,
+    pub site_ids: Vec<u32>,
 }
 
 impl HttpClient {
@@ -181,8 +234,12 @@ impl HttpClient {
         Builder::default()
     }
 
-    async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T, Error> {
-        let response = self.build_request(url).send().await;
+    /// # Errors
+    /// - [`Error::ReqwestNetwork`]
+    /// - [`Error::ReqwestResponseRead`]
+    /// - [`Error::SerdeParse`]
+    pub async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T, Error> {
+        let response = self.build_request(Method::GET, url).send().await;
 
         self.parse_response(url, response).await
     }
@@ -193,7 +250,7 @@ impl HttpClient {
         bearer: &str,
     ) -> Result<T, Error> {
         let response = self
-            .build_request(url)
+            .build_request(Method::GET, url)
             .header("Authorization", format!("Bearer {bearer}"))
             .send()
             .await;
@@ -201,14 +258,34 @@ impl HttpClient {
         self.parse_response(url, response).await
     }
 
-    fn build_request(&self, url: &str) -> RequestBuilder {
+    async fn post_with_bearer<T: DeserializeOwned>(
+        &self,
+        url: &str,
+        bearer: &str,
+        body: &Value,
+    ) -> Result<T, Error> {
+        let response = self
+            .build_request(Method::POST, url)
+            .json(body)
+            .header("Authorization", format!("Bearer {bearer}"))
+            .send()
+            .await;
+
+        self.parse_response(url, response).await
+    }
+
+    fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
         self.reqwest_client
-            .get(url)
+            .request(method, url)
             .header("Referrer", &self.referrer_header)
             .header("Site-Id", &self.site_id_header)
             .timeout(self.timeout)
     }
 
+    /// # Errors
+    /// - [`Error::ReqwestNetwork`]
+    /// - [`Error::ReqwestResponseRead`]
+    /// - [`Error::SerdeParse`]
     async fn parse_response<T: DeserializeOwned>(
         &self,
         url: &str,
@@ -229,7 +306,11 @@ impl HttpClient {
         Ok(serde_json::from_str(&response)?)
     }
 
-    async fn get_bookmark_folders(
+    /// # Errors
+    /// - [`Error::ReqwestNetwork`]
+    /// - [`Error::ReqwestResponseRead`]
+    /// - [`Error::SerdeParse`]
+    pub async fn get_bookmark_folders(
         &self,
         token: &str,
         user_id: u32,
@@ -242,7 +323,11 @@ impl HttpClient {
             .data)
     }
 
-    async fn get_bookmarks(
+    /// # Errors
+    /// - [`Error::ReqwestNetwork`]
+    /// - [`Error::ReqwestResponseRead`]
+    /// - [`Error::SerdeParse`]
+    pub async fn get_bookmarks(
         &self,
         page: u32,
         bookmark_folder_id: u32,
@@ -263,6 +348,30 @@ impl HttpClient {
 
         self.get_with_bearer::<ApiResponseWithPagination<Vec<BookmarkItem>>>(url, token)
             .await
+    }
+
+    /// # Errors
+    /// - [`Error::ReqwestNetwork`]
+    /// - [`Error::ReqwestResponseRead`]
+    /// - [`Error::SerdeParse`]
+    pub async fn refresh_access_token(
+        &self,
+        token_pair: &TokenPair,
+    ) -> Result<NewTokenPair, Error> {
+        let url = "https://api.cdnlibs.org/api/auth/oauth/token";
+        debug!(url = url, "Refreshing access token");
+
+        self.post_with_bearer(
+            url,
+            &token_pair.access_token.0,
+            &json!({
+                "grant_type": "refresh_token",
+                "client_id": "1",
+                "refresh_token": &token_pair.refresh_token.0,
+                "scope": ""
+            }),
+        )
+        .await
     }
 }
 
