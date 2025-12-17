@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use crate::mangalib::{Client, Error, MangaChapter};
+use crate::mangalib::{Client, Error, MangaChapter, MangaListItem};
+use reqwest::RequestBuilder;
 use serde::{Deserialize, de::DeserializeOwned};
 use tracing::debug;
 
@@ -127,6 +128,13 @@ pub struct HttpClient {
     reqwest_client: reqwest::Client,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct BookmarkListItem {
+    id: u32,
+    name: String,
+    site_ids: Vec<u32>,
+}
+
 impl HttpClient {
     #[must_use]
     pub fn builder() -> Builder {
@@ -134,14 +142,39 @@ impl HttpClient {
     }
 
     async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T, Error> {
+        let response = self.build_request(url).send().await;
+
+        self.parse_response(url, response).await
+    }
+
+    async fn get_with_bearer<T: DeserializeOwned>(
+        &self,
+        url: &str,
+        bearer: &str,
+    ) -> Result<T, Error> {
         let response = self
-            .reqwest_client
+            .build_request(url)
+            .header("Authorization", format!("Bearer {bearer}"))
+            .send()
+            .await;
+
+        self.parse_response(url, response).await
+    }
+
+    fn build_request(&self, url: &str) -> RequestBuilder {
+        self.reqwest_client
             .get(url)
             .header("Referrer", &self.referrer_header)
             .header("Site-Id", &self.site_id_header)
             .timeout(self.timeout)
-            .send()
-            .await
+    }
+
+    async fn parse_response<T: DeserializeOwned>(
+        &self,
+        url: &str,
+        response: reqwest::Result<reqwest::Response>,
+    ) -> Result<T, Error> {
+        let response = response
             .map_err(|e| Error::ReqwestNetwork {
                 source: e,
                 url: url.to_string(),
@@ -154,6 +187,30 @@ impl HttpClient {
             })?;
 
         Ok(serde_json::from_str(&response)?)
+    }
+
+    async fn get_bookmark_folders(
+        &self,
+        token: &str,
+        user_id: u32,
+    ) -> Result<Vec<BookmarkListItem>, Error> {
+        let url = &format!("https://api.cdnlibs.org/api/bookmarks/folder/{user_id}");
+
+        self.get_with_bearer(url, token).await
+    }
+
+    async fn get_bookmarks(
+        &self,
+        page: u32,
+        bookmark_folder_id: u32,
+        token: &str,
+        user_id: u32,
+    ) -> Result<Vec<MangaListItem>, Error> {
+        let url = &format!(
+            "https://api.cdnlibs.org/api/bookmarks?page={page}&sort_by=name&sort_type=desc&status={bookmark_folder_id}&user_id={user_id}"
+        );
+
+        self.get_with_bearer(url, token).await
     }
 }
 
@@ -205,6 +262,10 @@ impl Client for HttpClient {
             .collect();
 
         Ok(chapters)
+    }
+
+    async fn get_user_list(&self, slug: &str) -> Result<Vec<MangaListItem>, Error> {
+        todo!();
     }
 }
 

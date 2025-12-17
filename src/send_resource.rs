@@ -15,7 +15,6 @@ pub enum Error {
 
 /// # Errors
 /// - [`Error::Parse`]: Error while parsing mangalib json
-/// - [`Error::Send`]: Error sending resource to url
 pub async fn send_resource(url: &str) -> Result<(), Error> {
     let mangas: Vec<MangaPreview> =
         serde_json::from_str(MANGALIB_STATIC_RESOURCE).map_err(Error::Parse)?;
@@ -31,7 +30,9 @@ pub async fn send_resource(url: &str) -> Result<(), Error> {
     Ok(())
 }
 
-async fn send_single_resource(
+/// # Errors
+/// - [`Error::Send`]: Error sending resource to url
+pub async fn send_single_resource(
     client: Client,
     url: &str,
     manga: &MangaPreview,
