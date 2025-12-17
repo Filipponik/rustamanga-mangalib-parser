@@ -48,7 +48,7 @@ pub struct MangaPreview {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MangaListItem {
     pub slug: String,
-    pub index: Option<String>,
+    pub index: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
@@ -84,6 +84,7 @@ pub trait Client: Clone + Send + Sync {
 
     fn get_user_list(
         &self,
-        slug: &str,
+        token: &str,
+        user_id: u32,
     ) -> impl std::future::Future<Output = Result<Vec<MangaListItem>, Error>> + std::marker::Send;
 }

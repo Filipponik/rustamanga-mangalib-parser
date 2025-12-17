@@ -17,8 +17,48 @@ struct ApiResponse<T> {
 }
 
 #[derive(Deserialize, Debug)]
+struct ApiResponseWithPagination<T> {
+    data: T,
+    meta: Meta,
+}
+
+#[derive(Deserialize, Debug)]
+struct Meta {
+    current_page: u32,
+    from: Option<u32>,
+    to: Option<u32>,
+    page: u32,
+    next_page_url: bool,
+}
+
+#[derive(Deserialize, Debug)]
 struct ImageResponse {
     pages: Vec<Image>,
+}
+
+#[derive(serde::Deserialize)]
+struct BookmarkItem {
+    meta: Option<BookmarkMeta>,
+    media: BookmarkMedia,
+}
+
+#[derive(serde::Deserialize)]
+struct BookmarkMedia {
+    slug: String,
+}
+
+#[derive(serde::Deserialize)]
+struct BookmarkMeta {
+    item_number: Option<u32>,
+}
+
+impl From<BookmarkItem> for MangaListItem {
+    fn from(item: BookmarkItem) -> Self {
+        Self {
+            slug: item.media.slug,
+            index: item.meta.and_then(|meta| meta.item_number),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -196,7 +236,10 @@ impl HttpClient {
     ) -> Result<Vec<BookmarkListItem>, Error> {
         let url = &format!("https://api.cdnlibs.org/api/bookmarks/folder/{user_id}");
 
-        self.get_with_bearer(url, token).await
+        Ok(self
+            .get_with_bearer::<ApiResponse<Vec<BookmarkListItem>>>(url, token)
+            .await?
+            .data)
     }
 
     async fn get_bookmarks(
@@ -205,12 +248,21 @@ impl HttpClient {
         bookmark_folder_id: u32,
         token: &str,
         user_id: u32,
-    ) -> Result<Vec<MangaListItem>, Error> {
+    ) -> Result<ApiResponseWithPagination<Vec<BookmarkItem>>, Error> {
         let url = &format!(
             "https://api.cdnlibs.org/api/bookmarks?page={page}&sort_by=name&sort_type=desc&status={bookmark_folder_id}&user_id={user_id}"
         );
 
-        self.get_with_bearer(url, token).await
+        debug!(
+            user_id = user_id,
+            page = page,
+            bookmark_folder_id = bookmark_folder_id,
+            url = url,
+            "Getting bookmarks for user",
+        );
+
+        self.get_with_bearer::<ApiResponseWithPagination<Vec<BookmarkItem>>>(url, token)
+            .await
     }
 }
 
@@ -264,8 +316,40 @@ impl Client for HttpClient {
         Ok(chapters)
     }
 
-    async fn get_user_list(&self, slug: &str) -> Result<Vec<MangaListItem>, Error> {
-        todo!();
+    async fn get_user_list(&self, token: &str, user_id: u32) -> Result<Vec<MangaListItem>, Error> {
+        let folders: Vec<BookmarkListItem> = self
+            .get_bookmark_folders(token, user_id)
+            .await?
+            .into_iter()
+            .filter(|folder| folder.site_ids.contains(&1))
+            .collect();
+
+        let mut user_list = Vec::new();
+        for folder in folders {
+            let mut page = 1;
+            loop {
+                debug!(
+                    user_id = user_id,
+                    folder_id = folder.id,
+                    folder_name = folder.name,
+                    page = page,
+                    current_count = user_list.len(),
+                    "Requesting bookmarks for folder"
+                );
+                let response = self.get_bookmarks(page, folder.id, token, user_id).await?;
+                let list_items: Vec<MangaListItem> =
+                    response.data.into_iter().map(MangaListItem::from).collect();
+
+                user_list.extend(list_items);
+                if response.meta.next_page_url {
+                    page += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Ok(user_list)
     }
 }
 
