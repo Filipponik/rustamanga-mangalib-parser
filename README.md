@@ -189,10 +189,9 @@ Contributions are welcome! Here's how you can help:
 
 ## 📝 Additional Notes
 
-- 🌍 The parser uses Chrome/Chromium in headless mode to render pages and extract data
 - ⚙️ All configuration options are provided via CLI flags for flexibility
 - 📊 Test fixtures are available in `tests/fixtures/` for development
-- 🔍 Helper resources are located in `resource/json/` for reference
+- 🔍 Static resources are located in `resource/json/`
 
 ---
 
