@@ -10,6 +10,8 @@ use tokio::sync::{AcquireError, Semaphore};
 use tokio::time::sleep;
 use tracing::{error, info};
 
+pub mod commands;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Mangalib error: {0}")]
