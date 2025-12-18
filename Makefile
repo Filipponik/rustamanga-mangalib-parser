@@ -1,4 +1,4 @@
-version=0.10.0
+version=0.9.2
 image=filipponik/rustamanga-mangalib-parser
 platforms=linux/amd64,linux/arm64
 
@@ -13,6 +13,12 @@ build-multiplatform:
 build-static:
 	docker run -v ./:/volume --rm -t clux/muslrust:stable cargo build --release
 	upx --best --lzma target/*-linux-musl/release/rustamanga-mangalib-parser
+
+build-linux-static:
+	cargo build --release --target x86_64-unknown-linux-musl
+	mv target/x86_64-unknown-linux-musl/release/rustamanga-mangalib-parser ./rustamanga-mangalib-parser_x86_64-unknown-linux-musl
+	upx --best --lzma ./rustamanga-mangalib-parser_x86_64-unknown-linux-musl
+	./rustamanga-mangalib-parser_x86_64-unknown-linux-musl -V
 
 fix:
 	cargo fmt
