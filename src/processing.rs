@@ -11,6 +11,9 @@ use tokio::time::sleep;
 use tracing::{error, info};
 
 pub mod commands;
+mod get_manga_with_chapters_and_images;
+mod get_manga_with_only_chapters;
+mod get_user_list;
 
 #[derive(Debug, Error)]
 pub enum Error {

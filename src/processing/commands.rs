@@ -1,9 +1,9 @@
-#![allow(dead_code)]
-#![allow(unused)]
-use crate::{mangalib, processing::Error};
+use crate::processing::{
+    get_manga_with_chapters_and_images::GetMangaWithChaptersAndImagesParams,
+    get_manga_with_only_chapters::GetMangaWithOnlyChaptersParams, get_user_list::GetUserListParams,
+};
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use std::sync::Arc;
 
 macro_rules! define_commands {
     ($($str:expr => $variant:path),*) => {
@@ -12,7 +12,7 @@ macro_rules! define_commands {
                 match $command_name {
                     $(
                         $str => Ok($variant(
-                            Self::parse_params_from_object($object_payload)?,
+                            parse_params_from_object($object_payload)?,
                         )),
                     )*
                     c_name => Err(ParseError::InvalidCommand(c_name.to_string())),
@@ -24,48 +24,15 @@ macro_rules! define_commands {
 
 define_commands! {
     "full" => Command::GetMangaWithChaptersAndImages,
-    "only_chapters" => Command::GetMangaWithOnlyChapters
-}
-
-#[derive(Deserialize, Debug, Default)]
-pub enum CommandName {
-    #[serde(rename = "full")]
-    #[default]
-    GetMangaWithChaptersAndImages,
-    #[serde(rename = "only_chapters")]
-    GetMangaWithOnlyChapters,
+    "only_chapters" => Command::GetMangaWithOnlyChapters,
+    "get_user_list" => Command::GetMangaWithChaptersAndImages
 }
 
 #[derive(Deserialize, Debug)]
 pub enum Command {
     GetMangaWithChaptersAndImages(GetMangaWithChaptersAndImagesParams),
     GetMangaWithOnlyChapters(GetMangaWithOnlyChaptersParams),
-}
-
-impl Command {
-    pub fn handle(&self) -> Result<(), Error> {
-        todo!()
-    }
-}
-
-#[derive(Deserialize, Debug)]
-pub struct GetMangaWithOnlyChaptersParams {
-    slug: String,
-    callback_url: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct GetMangaWithChaptersAndImagesParams {
-    slug: String,
-    callback_url: String,
-    after_chapter: Option<String>,
-    after_volume: Option<String>,
-}
-
-#[derive(Clone)]
-pub struct Processor<TClient: mangalib::Client> {
-    client: Arc<TClient>,
-    sender: reqwest::Client,
+    GetUserList(GetUserListParams),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -84,49 +51,40 @@ pub enum ParseError {
     InvalidParams(serde_json::Error),
 }
 
-impl<TClient: mangalib::Client> Processor<TClient> {
-    pub const fn new(client: Arc<TClient>, sender: reqwest::Client) -> Self {
-        Self { client, sender }
-    }
+/// Parse command from string payload
+///
+/// # Errors
+/// - [`ParseError::FirstParse`]
+/// - [`ParseError::PayloadMustBeObject`]
+/// - [`ParseError::CommandMustBeString`]
+/// - [`ParseError::ParamsMustBeSet`]
+/// - [`ParseError::InvalidCommand`]
+/// - [`ParseError::InvalidParams`]
+pub fn parse_command(command: &str) -> Result<Command, ParseError> {
+    let value: Value = serde_json::from_str(command).map_err(ParseError::FirstParse)?;
 
-    /// Parse command from string payload
-    ///
-    /// # Errors
-    /// - [`ParseError::FirstParse`]
-    /// - [`ParseError::PayloadMustBeObject`]
-    /// - [`ParseError::CommandMustBeString`]
-    /// - [`ParseError::ParamsMustBeSet`]
-    /// - [`ParseError::InvalidCommand`]
-    /// - [`ParseError::InvalidParams`]
-    pub fn parse_command(command: &str) -> Result<Command, ParseError> {
-        let value: Value = serde_json::from_str(command).map_err(ParseError::FirstParse)?;
+    let Value::Object(object_payload) = value else {
+        return Err(ParseError::PayloadMustBeObject);
+    };
 
-        let Value::Object(object_payload) = value else {
-            return Err(ParseError::PayloadMustBeObject);
-        };
+    let Some(Value::String(command_name)) = object_payload.get("command") else {
+        return Err(ParseError::CommandMustBeString);
+    };
 
-        let Some(Value::String(command_name)) = object_payload.get("command") else {
-            return Err(ParseError::CommandMustBeString);
-        };
+    command_match!(command_name.as_str(), &object_payload)
+}
 
-        command_match!(command_name.as_str(), &object_payload)
-    }
+/// Parse params from object payload
+///
+/// # Errors
+/// - [`ParseError::ParamsMustBeSet`] If params is not set (not existing key)
+/// - [`ParseError::InvalidParams`] If params cannot be deserialized to needed struct
+fn parse_params_from_object<T: serde::de::DeserializeOwned>(
+    object: &Map<String, Value>,
+) -> Result<T, ParseError> {
+    let Some(params) = object.get("params") else {
+        return Err(ParseError::ParamsMustBeSet);
+    };
 
-    fn parse_params_from_object<T: serde::de::DeserializeOwned>(
-        object: &Map<String, Value>,
-    ) -> Result<T, ParseError> {
-        let Some(params) = object.get("params") else {
-            return Err(ParseError::ParamsMustBeSet);
-        };
-
-        serde_json::from_value(params.clone()).map_err(ParseError::InvalidParams)
-    }
-
-    #[allow(clippy::missing_errors_doc)]
-    #[allow(clippy::unused_async)]
-    pub async fn process(&self, command: Command) -> Result<(), Error> {
-        command.handle();
-
-        todo!();
-    }
+    serde_json::from_value(params.clone()).map_err(ParseError::InvalidParams)
 }
