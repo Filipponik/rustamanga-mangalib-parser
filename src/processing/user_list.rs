@@ -4,6 +4,9 @@ pub struct GetUserListParams {
     pub user_id: u32,
 }
 
-pub fn handle(params: &GetUserListParams) {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {}
+
+pub async fn handle(params: &GetUserListParams) -> Result<(), Error> {
     todo!();
 }

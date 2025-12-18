@@ -14,7 +14,7 @@ fn get_settings() -> Command {
             Command::new("serve")
                 .about("Start web server")
                 .arg(arg!(--port <PORT> "Web server port"))
-                .arg(arg!(--browsers <BROWSERS> "Max chrome browsers count")),
+                .arg(arg!(--semaphore-permits <SEMAPHORE_PERMITS> "Max semaphore permits")),
             Command::new("send-resource")
                 .about("Send start static resource")
                 .arg(arg!(--url <URL> "URL where we should send this resource"))
@@ -24,7 +24,7 @@ fn get_settings() -> Command {
                 .about("Consume RabbitMQ queue")
                 .arg(arg!(--url <URL> "AMQP URI"))
                 .arg(arg!(--proxy <PROXY> "Proxy URI"))
-                .arg(arg!(--browsers <BROWSERS> "Max chrome browsers count"))
+                .arg(arg!(--semaphore-permits <SEMAPHORE_PERMITS> "Max semaphore permits"))
                 .arg_required_else_help(true),
         ])
 }
@@ -55,9 +55,9 @@ pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", sub_matches)) => {
             let port = parse_port(sub_matches)?;
-            let chrome_max_count = parse_chrome_max_count(sub_matches)?;
+            let semaphore_permits = parse_semaphore_permits(sub_matches)?;
 
-            serve(port, chrome_max_count).await
+            serve(port, semaphore_permits).await
         }
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches
@@ -70,9 +70,9 @@ pub async fn process_commands() -> Result<(), Error> {
                 .get_one::<String>("url")
                 .ok_or_else(|| Error::BadArgument("url is required".to_string()))?;
             let proxy_str = sub_matches.get_one::<String>("proxy").map(String::as_str);
-            let chrome_max_count = parse_chrome_max_count(sub_matches)?;
+            let semaphore_permits = parse_semaphore_permits(sub_matches)?;
 
-            consume(url, chrome_max_count, proxy_str).await
+            consume(url, semaphore_permits, proxy_str).await
         }
         Some(("collect-resource-full", _sub_matches)) => {
             Ok(collect_resource::collect_resource().await?)
@@ -82,15 +82,17 @@ pub async fn process_commands() -> Result<(), Error> {
     }
 }
 
-fn parse_chrome_max_count(sub_matches: &ArgMatches) -> Result<u16, Error> {
-    sub_matches.get_one::<String>("browsers").map_or_else(
-        || Ok(config::DEFAULT_CHROME_MAX_COUNT),
-        |value| {
-            value.parse::<u16>().map_err(|err| {
-                Error::BadArgument(format!("Failed to parse chrome max count: {err}"))
-            })
-        },
-    )
+fn parse_semaphore_permits(sub_matches: &ArgMatches) -> Result<usize, Error> {
+    sub_matches
+        .get_one::<String>("semaphore-permits")
+        .map_or_else(
+            || Ok(config::DEFAULT_SEMAPHORE_PERMITS),
+            |value| {
+                value.parse::<usize>().map_err(|err| {
+                    Error::BadArgument(format!("Failed to parse semaphore permits: {err}"))
+                })
+            },
+        )
 }
 
 fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
@@ -104,14 +106,18 @@ fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
     )
 }
 
-async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
-    Ok(server::serve(port, chrome_max_count).await?)
+async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
+    Ok(server::serve(port, semaphore_permits).await?)
 }
 
 async fn send_resource(url: &str) -> Result<(), Error> {
     Ok(send_resource::send_resource(url).await?)
 }
 
-async fn consume(url: &str, chrome_max_count: u16, proxy_str: Option<&str>) -> Result<(), Error> {
-    Ok(rabbitmq_consumer::consume(url, chrome_max_count, proxy_str).await?)
+async fn consume(
+    url: &str,
+    semaphore_permits: usize,
+    proxy_str: Option<&str>,
+) -> Result<(), Error> {
+    Ok(rabbitmq_consumer::consume(url, semaphore_permits, proxy_str).await?)
 }

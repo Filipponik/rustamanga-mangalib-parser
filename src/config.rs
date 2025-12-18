@@ -1,5 +1,5 @@
 pub const DEFAULT_APP_PORT: u16 = 8000;
-pub const DEFAULT_CHROME_MAX_COUNT: u16 = 16;
+pub const DEFAULT_SEMAPHORE_PERMITS: usize = 16;
 
 pub fn config_tracing() {
     tracing_subscriber::fmt()

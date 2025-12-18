@@ -1,6 +1,5 @@
 use crate::mangalib::Client;
 use crate::mangalib::http_client::HttpClient;
-use crate::processing::ScrapMangaRequest;
 use crate::processing::{self, Processor};
 use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
@@ -30,22 +29,22 @@ impl<TClient: Client> AppState<TClient> {
 #[derive(Clone)]
 struct AppConfig {
     port: u16,
-    chrome_max_count: u16,
+    semaphore_permits: usize,
 }
 
 impl AppConfig {
     #[allow(dead_code)]
     pub fn from_env() -> Result<Self, ConfigErrorType> {
         let port = env::var("APP_PORT")?.parse::<u16>()?;
-        let chrome_max_count = env::var("CHROME_MAX_COUNT")?.parse::<u16>()?;
+        let semaphore_permits = env::var("SEMAPHORE_PERMITS")?.parse::<usize>()?;
 
-        Ok(Self::new(port, chrome_max_count))
+        Ok(Self::new(port, semaphore_permits))
     }
 
-    pub const fn new(port: u16, chrome_max_count: u16) -> Self {
+    pub const fn new(port: u16, semaphore_permits: usize) -> Self {
         Self {
             port,
-            chrome_max_count,
+            semaphore_permits,
         }
     }
 
@@ -73,8 +72,8 @@ pub enum Error {
 /// # Errors
 /// - [`Error::Config`]: Error while parsing config
 /// - [`Error::ServerError`]: Server error
-pub async fn serve(port: u16, chrome_max_count: u16) -> Result<(), Error> {
-    let config = AppConfig::new(port, chrome_max_count);
+pub async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
+    let config = AppConfig::new(port, semaphore_permits);
     let state = Arc::new(AppState::new(
         config,
         Processor::new(HttpClient::builder().build(), None),
@@ -99,10 +98,10 @@ async fn scrap_manga<TClient: Client + 'static>(
     Json(payload): Json<ScrapMangaRequest>,
 ) -> (StatusCode, Json<Value>) {
     let processor = state.processor.clone();
-    let chrome_max_count = state.config.chrome_max_count;
+    let semaphore_permits = state.config.semaphore_permits;
 
     tokio::spawn(async move {
-        if let Err(err) = processor.process(chrome_max_count, payload).await {
+        if let Err(err) = processor.process(semaphore_permits, payload).await {
             error!("Error while processing manga: {err:?}");
         }
     });

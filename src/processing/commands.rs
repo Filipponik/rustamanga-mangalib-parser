@@ -1,6 +1,6 @@
 use crate::processing::{
-    get_manga_with_chapters_and_images::GetMangaWithChaptersAndImagesParams,
-    get_manga_with_only_chapters::GetMangaWithOnlyChaptersParams, get_user_list::GetUserListParams,
+    manga::{GetMangaWithChaptersAndImagesParams, GetMangaWithOnlyChaptersParams},
+    user_list::GetUserListParams,
 };
 use serde::Deserialize;
 use serde_json::{Map, Value};
