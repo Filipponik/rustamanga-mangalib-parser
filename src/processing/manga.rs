@@ -100,15 +100,6 @@ pub async fn handle_only_chapters<T: mangalib::Client + 'static>(
     Ok(())
 }
 
-#[derive(Deserialize, Debug, Default)]
-pub enum ScrapMangaMode {
-    #[serde(rename = "full")]
-    #[default]
-    Full,
-    #[serde(rename = "only_chapters")]
-    OnlyChapters,
-}
-
 #[derive(Debug, Clone)]
 pub struct MangaScrappingParamsDto {
     pub slug: String,

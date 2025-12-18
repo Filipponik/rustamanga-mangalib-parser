@@ -28,6 +28,7 @@ define_commands! {
     "get_user_list" => Command::GetMangaWithChaptersAndImages
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Deserialize, Debug)]
 pub enum Command {
     GetMangaWithChaptersAndImages(GetMangaWithChaptersAndImagesParams),

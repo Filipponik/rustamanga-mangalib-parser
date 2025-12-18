@@ -1,3 +1,5 @@
+#![allow(unused, dead_code, clippy::unused_async)]
+
 #[derive(serde::Deserialize, Debug)]
 pub struct GetUserListParams {
     pub callback_url: String,

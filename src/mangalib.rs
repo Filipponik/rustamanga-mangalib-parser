@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables)]
+
 mod deserializers;
 #[cfg(feature = "http_client")]
 pub mod http_client;
