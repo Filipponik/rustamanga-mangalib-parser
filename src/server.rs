@@ -95,13 +95,13 @@ pub async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
 
 async fn scrap_manga<TClient: Client + 'static>(
     State(state): State<Arc<AppState<TClient>>>,
-    Json(payload): Json<ScrapMangaRequest>,
+    payload: String,
 ) -> (StatusCode, Json<Value>) {
     let processor = state.processor.clone();
     let semaphore_permits = state.config.semaphore_permits;
 
     tokio::spawn(async move {
-        if let Err(err) = processor.process(semaphore_permits, payload).await {
+        if let Err(err) = processor.process(semaphore_permits, &payload).await {
             error!("Error while processing manga: {err:?}");
         }
     });
