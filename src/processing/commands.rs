@@ -15,20 +15,24 @@ pub enum CommandName {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Command<T> {
-    command: CommandName,
-    params: T,
+pub enum Command {
+    GetMangaWithChaptersAndImages(GetMangaWithChaptersAndImagesParams),
+    GetMangaWithOnlyChapters(GetMangaWithOnlyChaptersParams),
 }
 
-pub trait CommandHandler {
-    fn handle(&self);
+impl Command {
+    pub fn handle(&self) -> Result<(), Error> {
+        todo!()
+    }
 }
 
+#[derive(Deserialize, Debug)]
 pub struct GetMangaWithOnlyChaptersParams {
     slug: String,
     callback_url: String,
 }
 
+#[derive(Deserialize, Debug)]
 pub struct GetMangaWithChaptersAndImagesParams {
     slug: String,
     callback_url: String,
@@ -50,10 +54,12 @@ pub enum ParseError {
     PayloadMustBeObject,
     #[error("Command must be a string")]
     CommandMustBeString,
-    #[error("Params must be an object")]
-    ParamsMustBeObject,
+    #[error("Params must be set")]
+    ParamsMustBeSet,
     #[error("Invalid command: {0}")]
-    InvalidCommand(serde_json::Error),
+    InvalidCommand(String),
+    #[error("Invalid params: {0}")]
+    InvalidParams(serde_json::Error),
 }
 
 impl<TClient: mangalib::Client> Processor<TClient> {
@@ -67,9 +73,10 @@ impl<TClient: mangalib::Client> Processor<TClient> {
     /// - [`ParseError::FirstParse`]
     /// - [`ParseError::PayloadMustBeObject`]
     /// - [`ParseError::CommandMustBeString`]
-    /// - [`ParseError::ParamsMustBeObject`]
+    /// - [`ParseError::ParamsMustBeSet`]
     /// - [`ParseError::InvalidCommand`]
-    pub fn parse_command<T>(command: &str) -> Result<Command<T>, ParseError> {
+    /// - [`ParseError::InvalidParams`]
+    pub fn parse_command(command: &str) -> Result<Command, ParseError> {
         let value: Value = serde_json::from_str(command).map_err(ParseError::FirstParse)?;
 
         let Value::Object(object_payload) = value else {
@@ -80,20 +87,31 @@ impl<TClient: mangalib::Client> Processor<TClient> {
             return Err(ParseError::CommandMustBeString);
         };
 
-        let command_enum: CommandName =
-            serde_json::from_str(command_name).map_err(ParseError::InvalidCommand)?;
+        match command_name.as_str() {
+            "full" => Ok(Command::GetMangaWithChaptersAndImages(
+                Self::parse_params_from_object(&object_payload)?,
+            )),
+            "only_chapters" => Ok(Command::GetMangaWithOnlyChapters(
+                Self::parse_params_from_object(&object_payload)?,
+            )),
+            c_name => Err(ParseError::InvalidCommand(c_name.to_string())),
+        }
+    }
 
-        let Some(Value::Object(params)) = object_payload.get("params") else {
-            return Err(ParseError::ParamsMustBeObject);
+    fn parse_params_from_object<T: serde::de::DeserializeOwned>(
+        object: &Map<String, Value>,
+    ) -> Result<T, ParseError> {
+        let Some(params) = object.get("params") else {
+            return Err(ParseError::ParamsMustBeSet);
         };
 
-        todo!();
+        serde_json::from_value(params.clone()).map_err(ParseError::InvalidParams)
     }
 
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::unused_async)]
-    pub async fn process<T: CommandHandler>(&self, command: Command<T>) -> Result<(), Error> {
-        command.params.handle();
+    pub async fn process(&self, command: Command) -> Result<(), Error> {
+        command.handle();
 
         todo!();
     }
