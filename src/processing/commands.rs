@@ -5,6 +5,28 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 
+macro_rules! define_commands {
+    ($($str:expr => $variant:path),*) => {
+        macro_rules! command_match {
+            ($command_name:expr, $object_payload:expr) => {
+                match $command_name {
+                    $(
+                        $str => Ok($variant(
+                            Self::parse_params_from_object($object_payload)?,
+                        )),
+                    )*
+                    c_name => Err(ParseError::InvalidCommand(c_name.to_string())),
+                }
+            };
+        }
+    };
+}
+
+define_commands! {
+    "full" => Command::GetMangaWithChaptersAndImages,
+    "only_chapters" => Command::GetMangaWithOnlyChapters
+}
+
 #[derive(Deserialize, Debug, Default)]
 pub enum CommandName {
     #[serde(rename = "full")]
@@ -87,15 +109,7 @@ impl<TClient: mangalib::Client> Processor<TClient> {
             return Err(ParseError::CommandMustBeString);
         };
 
-        match command_name.as_str() {
-            "full" => Ok(Command::GetMangaWithChaptersAndImages(
-                Self::parse_params_from_object(&object_payload)?,
-            )),
-            "only_chapters" => Ok(Command::GetMangaWithOnlyChapters(
-                Self::parse_params_from_object(&object_payload)?,
-            )),
-            c_name => Err(ParseError::InvalidCommand(c_name.to_string())),
-        }
+        command_match!(command_name.as_str(), &object_payload)
     }
 
     fn parse_params_from_object<T: serde::de::DeserializeOwned>(
