@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
+#![allow(dead_code, unused_variables)]
 
 mod deserializers;
 #[cfg(feature = "http_client")]
@@ -13,22 +12,8 @@ use thiserror::Error;
 pub enum Error {
     #[error("Failed to parse by serde: {0}")]
     SerdeParse(#[from] serde_json::Error),
-    #[error("Failed to create browser: {0}")]
-    BrowserCreate(String),
-    #[error("Failed to create browser launch builder: {0}")]
-    BrowserCreateBuilder(String),
-    #[error("Failed to create browser tab: {0}")]
-    BrowserTabCreate(String),
-    #[error("Failed to navigate to url: {0}")]
-    BrowserNavigate(String),
     #[error("Failed to set browser user agent: {0}")]
     SetUserAgent(String),
-    #[error("Browser wait navigate too long: {0}")]
-    BrowserWaitNavigateTooLong(String),
-    #[error("Browser wait element too long: {0}")]
-    BrowserWaitElementTooLong(String),
-    #[error("Failed to get page content: {0}")]
-    BrowserGetContent(String),
     #[error("Network error for URL {url}: {source}")]
     ReqwestNetwork { source: reqwest::Error, url: String },
     #[error("Failed to read response from {url}: {source}")]

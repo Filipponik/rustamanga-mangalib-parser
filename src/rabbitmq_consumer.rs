@@ -1,5 +1,5 @@
 use crate::mangalib::http_client::HttpClient;
-use crate::processing::{Processor, ScrapMangaRequest};
+use crate::processing::Processor;
 use futures::StreamExt;
 use lapin::message::Delivery;
 use lapin::options::{
@@ -74,7 +74,7 @@ pub enum Error {
 /// or acknowledging/nacking deliveries fails.
 pub async fn consume(
     url: &str,
-    chrome_max_count: u16,
+    semaphore_permits: usize,
     proxy_str: Option<&str>,
 ) -> Result<(), Error> {
     let channel = create_channel(url).await?;
@@ -94,10 +94,10 @@ pub async fn consume(
             continue;
         };
 
-        let payload = parse_delivery(&delivery);
+        let payload: Result<&str, ParseDeliveryErrorType> = parse_delivery(&delivery);
 
         let processing_result = match payload {
-            Ok(value) => processor.process(chrome_max_count, value).await,
+            Ok(value) => processor.process(semaphore_permits, value).await,
             Err(err) => {
                 error!("Parse delivery error: {err:?}");
                 continue;
@@ -127,19 +127,11 @@ pub async fn consume(
     Ok(())
 }
 
-fn parse_delivery_data(data: &[u8]) -> Result<String, ParseDeliveryErrorType> {
-    Ok(std::str::from_utf8(data)?.to_string())
-}
-
-fn parse_json<T: serde::de::DeserializeOwned>(data: &str) -> Result<T, ParseDeliveryErrorType> {
-    Ok(serde_json::from_str::<T>(data)?)
-}
-
-fn parse_delivery(delivery: &Delivery) -> Result<ScrapMangaRequest, ParseDeliveryErrorType> {
-    let string_data = parse_delivery_data(&delivery.data)?;
+fn parse_delivery(delivery: &Delivery) -> Result<&str, ParseDeliveryErrorType> {
+    let string_data = std::str::from_utf8(&delivery.data)?;
     info!(string_data = string_data, "Received delivery");
 
-    parse_json(&string_data)
+    Ok(string_data)
 }
 
 async fn create_channel(url: &str) -> Result<Channel, AmqpWrapperError> {
