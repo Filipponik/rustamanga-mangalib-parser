@@ -103,16 +103,48 @@ Options:
 
 The server will be available at `http://localhost:{PORT}`
 
-#### API Endpoint
+#### API Endpoints
 
-**POST** `/scrap-manga`
+1. **POST** `/async-command` - execute command asynchronously
+2. **POST** `/sync-command` - Same, but action will be executed synchronously.
 
 **Request Body:**
 
+Command: full
+
 ```json
 {
-  "slug": "manga-slug",
-  "callback_url": "https://example.com"
+  "command": "full",
+  "params": {
+    "slug": "manga-slug",
+    "callback_url": "https://example.com",
+    "after_chapter": "1",
+    "after_volume": "1"
+  }
+}
+```
+
+Command: only_chapters
+
+```json
+{
+  "command": "only_chapters",
+  "params": {
+    "slug": "manga-slug",
+    "callback_url": "https://example.com",
+  }
+}
+```
+
+Command: get_user_list
+
+```json
+{
+  "command": "get_user_list",
+  "params": {
+    "user_id": 1,
+    "callback_url": "https://example.com",
+  }
 }
 ```
 

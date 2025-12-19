@@ -14,7 +14,7 @@ fn get_settings() -> Command {
             Command::new("serve")
                 .about("Start web server")
                 .arg(arg!(--port <PORT> "Web server port"))
-                .arg(arg!(--semaphore-permits <SEMAPHORE_PERMITS> "Max semaphore permits")),
+                .arg(arg!(--semaphore_permits <SEMAPHORE_PERMITS> "Max semaphore permits")),
             Command::new("send-resource")
                 .about("Send start static resource")
                 .arg(arg!(--url <URL> "URL where we should send this resource"))
@@ -24,7 +24,7 @@ fn get_settings() -> Command {
                 .about("Consume RabbitMQ queue")
                 .arg(arg!(--url <URL> "AMQP URI"))
                 .arg(arg!(--proxy <PROXY> "Proxy URI"))
-                .arg(arg!(--semaphore-permits <SEMAPHORE_PERMITS> "Max semaphore permits"))
+                .arg(arg!(--semaphore_permits <SEMAPHORE_PERMITS> "Max semaphore permits"))
                 .arg_required_else_help(true),
         ])
 }
@@ -84,7 +84,7 @@ pub async fn process_commands() -> Result<(), Error> {
 
 fn parse_semaphore_permits(sub_matches: &ArgMatches) -> Result<usize, Error> {
     sub_matches
-        .get_one::<String>("semaphore-permits")
+        .get_one::<String>("semaphore_permits")
         .map_or_else(
             || Ok(config::DEFAULT_SEMAPHORE_PERMITS),
             |value| {

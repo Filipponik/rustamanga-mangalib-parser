@@ -12,8 +12,6 @@ use thiserror::Error;
 use tokio::net::TcpListener;
 use tracing::{error, info};
 
-const SCRAP_MANGA_ROUTE: &str = "/scrap-manga";
-
 #[derive(Clone)]
 struct AppState<TClient: Client> {
     config: AppConfig,
@@ -82,8 +80,10 @@ pub async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
     let listener = TcpListener::bind(&address).await?;
 
     let router: Router = Router::new()
-        .route(SCRAP_MANGA_ROUTE, post(scrap_manga))
-        .route(&format!("{SCRAP_MANGA_ROUTE}/"), post(scrap_manga))
+        .route("/async-command", post(do_async_command))
+        .route("/async-command/", post(do_async_command))
+        .route("/sync-command", post(do_sync_command))
+        .route("/sync-command/", post(do_sync_command))
         .with_state(state)
         .fallback(handle_404);
 
@@ -93,7 +93,7 @@ pub async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
     Ok(())
 }
 
-async fn scrap_manga<TClient: Client + 'static>(
+async fn do_async_command<TClient: Client + 'static>(
     State(state): State<Arc<AppState<TClient>>>,
     payload: String,
 ) -> (StatusCode, Json<Value>) {
@@ -113,6 +113,34 @@ async fn scrap_manga<TClient: Client + 'static>(
             "message": "Manga was sent successfully"
         })),
     )
+}
+
+async fn do_sync_command<TClient: Client + 'static>(
+    State(state): State<Arc<AppState<TClient>>>,
+    payload: String,
+) -> (StatusCode, Json<Value>) {
+    let processor = state.processor.clone();
+    let semaphore_permits = state.config.semaphore_permits;
+
+    match processor.process(semaphore_permits, &payload).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "message": "Manga was sent successfully"
+            })),
+        ),
+        Err(err) => {
+            error!("Error while processing manga: {err:?}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "success": false,
+                    "message": format!("Failed to process manga: {err:?}")
+                })),
+            )
+        }
+    }
 }
 
 async fn handle_404(uri: OriginalUri) -> (StatusCode, Json<Value>) {
