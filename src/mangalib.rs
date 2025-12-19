@@ -18,6 +18,11 @@ pub enum Error {
     ReqwestNetwork { source: reqwest::Error, url: String },
     #[error("Failed to read response from {url}: {source}")]
     ReqwestResponseRead { source: reqwest::Error, url: String },
+    #[error("Bad response status for URL {url}: {status}")]
+    ReqwestResponseStatus {
+        status: reqwest::StatusCode,
+        url: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
