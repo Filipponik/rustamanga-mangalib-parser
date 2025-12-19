@@ -64,7 +64,7 @@ pub enum Error {
     #[error("Error while parsing config {0}")]
     Config(#[from] ConfigErrorType),
     #[error("Server error {0}")]
-    ServerError(#[from] std::io::Error),
+    Server(#[from] std::io::Error),
     #[error("HTTP client build error {0}")]
     HttpClientBuild(#[from] reqwest::Error),
 }
