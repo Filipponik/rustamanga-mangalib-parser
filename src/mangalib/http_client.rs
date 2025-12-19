@@ -283,19 +283,28 @@ impl HttpClient {
     }
 
     /// # Errors
-    /// - [`Error::ReqwestNetwork`]
-    /// - [`Error::ReqwestResponseRead`]
-    /// - [`Error::SerdeParse`]
+    /// - [`Error::ReqwestNetwork`] if network error occurs
+    /// - [`Error::ReqwestResponseRead`] if cannot read response body
+    /// - [`Error::SerdeParse`] if cannot parse response body to needed struct
+    /// - [`Error::ReqwestResponseStatus`] if response status code is not success
     async fn parse_response<T: DeserializeOwned>(
         &self,
         url: &str,
-        response: reqwest::Result<reqwest::Response>,
+        reqwest_response: reqwest::Result<reqwest::Response>,
     ) -> Result<T, Error> {
-        let response = response
-            .map_err(|e| Error::ReqwestNetwork {
-                source: e,
+        let response = reqwest_response.map_err(|e| Error::ReqwestNetwork {
+            source: e,
+            url: url.to_string(),
+        })?;
+
+        if !response.status().is_success() {
+            return Err(Error::ReqwestResponseStatus {
+                status: response.status(),
                 url: url.to_string(),
-            })?
+            });
+        }
+
+        let response_body = response
             .text()
             .await
             .map_err(|e| Error::ReqwestResponseRead {
@@ -303,7 +312,7 @@ impl HttpClient {
                 url: url.to_string(),
             })?;
 
-        Ok(serde_json::from_str(&response)?)
+        Ok(serde_json::from_str(&response_body)?)
     }
 
     /// # Errors
