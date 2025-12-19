@@ -1,5 +1,5 @@
 use crate::mangalib::Client;
-use crate::mangalib::http_client::HttpClient;
+use crate::mangalib::http_client::{BuilderError, HttpClient};
 use crate::processing::{self, Processor};
 use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
@@ -64,7 +64,9 @@ pub enum Error {
     #[error("Error while parsing config {0}")]
     Config(#[from] ConfigErrorType),
     #[error("Server error {0}")]
-    ServerError(#[from] std::io::Error),
+    Server(#[from] std::io::Error),
+    #[error("Mangalib client build error {0}")]
+    MangalibBuild(#[from] BuilderError),
 }
 
 /// # Errors
@@ -72,10 +74,10 @@ pub enum Error {
 /// - [`Error::ServerError`]: Server error
 pub async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
     let config = AppConfig::new(port, semaphore_permits);
-    let state = Arc::new(AppState::new(
-        config,
-        Processor::new(HttpClient::builder().build(), None),
-    ));
+    let mangalib_client = HttpClient::builder()
+        // .token_pair(token_pair)
+        .build()?;
+    let state = Arc::new(AppState::new(config, Processor::new(mangalib_client, None)));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;
 

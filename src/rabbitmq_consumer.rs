@@ -1,4 +1,4 @@
-use crate::mangalib::http_client::HttpClient;
+use crate::mangalib::http_client::{BuilderError, HttpClient};
 use crate::processing::Processor;
 use futures::StreamExt;
 use lapin::message::Delivery;
@@ -65,6 +65,8 @@ pub enum Error {
     ParseDelivery(#[from] ParseDeliveryErrorType),
     #[error("HTTP client build error {0}")]
     HttpClientBuild(#[from] reqwest::Error),
+    #[error("Mangalib client build error {0}")]
+    MangalibBuild(#[from] BuilderError),
 }
 
 /// Consumes messages from `RabbitMQ` and processes them.
@@ -209,7 +211,11 @@ fn build_client(proxy_str: Option<&str>) -> Result<HttpClient, Error> {
         None => reqwest::ClientBuilder::new(),
     };
 
-    let client = client_builder.build().map_err(Error::HttpClientBuild)?;
+    let http_client = client_builder.build().map_err(Error::HttpClientBuild)?;
+    let mangalib_client = HttpClient::builder()
+        .reqwest_client(http_client)
+        // .token_pair(token_pair)
+        .build()?;
 
-    Ok(HttpClient::builder().reqwest_client(client).build())
+    Ok(mangalib_client)
 }

@@ -1,9 +1,8 @@
-use std::time::Duration;
-
 use crate::mangalib::{Client, Error, MangaChapter, MangaListItem};
 use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::{Value, json};
+use std::time::Duration;
 use tracing::debug;
 
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
@@ -62,7 +61,7 @@ impl From<BookmarkItem> for MangaListItem {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
 pub struct AccessToken(String);
 
 impl AccessToken {
@@ -70,9 +69,14 @@ impl AccessToken {
     pub fn new(token: impl Into<String>) -> Self {
         Self(token.into())
     }
+
+    #[must_use]
+    pub fn value(&self) -> &str {
+        &self.0
+    }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
 pub struct RefreshToken(String);
 
 impl RefreshToken {
@@ -80,9 +84,14 @@ impl RefreshToken {
     pub fn new(token: impl Into<String>) -> Self {
         Self(token.into())
     }
+
+    #[must_use]
+    pub fn value(&self) -> &str {
+        &self.0
+    }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
 pub struct TokenPair {
     pub access_token: AccessToken,
     pub refresh_token: RefreshToken,
@@ -98,7 +107,7 @@ impl TokenPair {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
 pub struct NewTokenPair {
     pub access_token: AccessToken,
     pub refresh_token: RefreshToken,
@@ -143,6 +152,12 @@ impl From<Chapter> for MangaChapter {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum BuilderError {
+    #[error("Missing token pair")]
+    MissingTokenPair,
+}
+
 #[derive(Default)]
 pub struct Builder {
     image_server_prefix: Option<String>,
@@ -151,6 +166,7 @@ pub struct Builder {
     site_id_header: Option<String>,
     timeout: Option<Duration>,
     reqwest_client: Option<reqwest::Client>,
+    token_pair: Option<TokenPair>,
 }
 
 impl Builder {
@@ -191,8 +207,22 @@ impl Builder {
     }
 
     #[must_use]
-    pub fn build(self) -> HttpClient {
-        HttpClient {
+    pub fn token_pair(mut self, token_pair: TokenPair) -> Self {
+        self.token_pair = Some(token_pair);
+        self
+    }
+
+    /// Builds the HTTP client.
+    ///
+    /// # Errors
+    ///
+    /// - [`BuilderError::MissingTokenPair`] Returns an error if the token pair is missing.
+    pub fn build(self) -> Result<HttpClient, BuilderError> {
+        let Some(token_pair) = self.token_pair else {
+            return Err(BuilderError::MissingTokenPair);
+        };
+
+        Ok(HttpClient {
             image_server_prefix: self
                 .image_server_prefix
                 .unwrap_or_else(|| IMAGE_SERVER_PREFIX.to_string()),
@@ -207,7 +237,8 @@ impl Builder {
                 .unwrap_or_else(|| SITE_ID_HEADER.to_string()),
             timeout: self.timeout.unwrap_or(DEFAULT_REQUEST_TIMEOUT),
             reqwest_client: self.reqwest_client.unwrap_or_default(),
-        }
+            token_pair,
+        })
     }
 }
 
@@ -219,6 +250,7 @@ pub struct HttpClient {
     site_id_header: String,
     timeout: Duration,
     reqwest_client: reqwest::Client,
+    token_pair: TokenPair,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -354,24 +386,26 @@ impl HttpClient {
     /// - [`Error::ReqwestNetwork`]
     /// - [`Error::ReqwestResponseRead`]
     /// - [`Error::SerdeParse`]
-    pub async fn refresh_access_token(
-        &self,
-        token_pair: &TokenPair,
-    ) -> Result<NewTokenPair, Error> {
+    pub async fn refresh_access_token(&mut self) -> Result<NewTokenPair, Error> {
         let url = "https://api.cdnlibs.org/api/auth/oauth/token";
         debug!(url = url, "Refreshing access token");
 
-        self.post_with_bearer(
-            url,
-            &token_pair.access_token.0,
-            &json!({
-                "grant_type": "refresh_token",
-                "client_id": "1",
-                "refresh_token": &token_pair.refresh_token.0,
-                "scope": ""
-            }),
-        )
-        .await
+        let new_token_pair = self
+            .post_with_bearer::<NewTokenPair>(
+                url,
+                &self.token_pair.access_token.0,
+                &json!({
+                    "grant_type": "refresh_token",
+                    "client_id": "1",
+                    "refresh_token": &self.token_pair.refresh_token.0,
+                    "scope": ""
+                }),
+            )
+            .await?;
+
+        self.token_pair = TokenPair::from(new_token_pair.clone());
+
+        Ok(new_token_pair)
     }
 }
 
@@ -475,17 +509,23 @@ mod tests {
         assert!(builder.site_id_header.is_none());
         assert!(builder.timeout.is_none());
         assert!(builder.reqwest_client.is_none());
+        assert!(builder.token_pair.is_none());
     }
 
     #[tokio::test]
     async fn test_client_builder_change_state() {
+        let token_pair = TokenPair::new(
+            AccessToken("access_token".to_string()),
+            RefreshToken("refresh_token".to_string()),
+        );
         let builder = Builder::default()
             .image_server_prefix("test")
             .base_url("test2")
             .referrer_header("test3")
             .site_id_header("test4")
             .timeout(Duration::from_secs(12345))
-            .reqwest_client(reqwest::Client::new());
+            .reqwest_client(reqwest::Client::new())
+            .token_pair(token_pair.clone());
 
         assert_eq!(builder.image_server_prefix.unwrap(), "test");
         assert_eq!(builder.base_url.unwrap(), "test2");
@@ -493,10 +533,16 @@ mod tests {
         assert_eq!(builder.site_id_header.unwrap(), "test4");
         assert_eq!(builder.timeout.unwrap(), Duration::from_secs(12345));
         assert!(builder.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
+        assert_eq!(builder.token_pair, Some(token_pair));
     }
 
     #[tokio::test]
     async fn test_client_builder_build_all_filled() {
+        let token_pair = TokenPair::new(
+            AccessToken("access_token".to_string()),
+            RefreshToken("refresh_token".to_string()),
+        );
+
         let client = Builder::default()
             .image_server_prefix("test")
             .base_url("test2")
@@ -504,7 +550,9 @@ mod tests {
             .site_id_header("test4")
             .timeout(Duration::from_secs(12345))
             .reqwest_client(reqwest::Client::new())
-            .build();
+            .token_pair(token_pair.clone())
+            .build()
+            .unwrap();
 
         assert_eq!(client.image_server_prefix, "test");
         assert_eq!(client.base_url, "test2");
@@ -512,11 +560,20 @@ mod tests {
         assert_eq!(client.site_id_header, "test4");
         assert_eq!(client.timeout, Duration::from_secs(12345));
         // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
+        assert_eq!(client.token_pair, token_pair);
     }
 
     #[tokio::test]
-    async fn test_client_builder_build_all_default() {
-        let client = Builder::default().build();
+    async fn test_client_builder_build_all_default_with_only_required() {
+        let token_pair = TokenPair::new(
+            AccessToken("access_token".to_string()),
+            RefreshToken("refresh_token".to_string()),
+        );
+
+        let client = Builder::default()
+            .token_pair(token_pair.clone())
+            .build()
+            .unwrap();
 
         assert_eq!(client.image_server_prefix, "https://img33.imgslib.link");
         assert_eq!(client.base_url, "https://api.cdnlibs.org");
@@ -524,5 +581,13 @@ mod tests {
         assert_eq!(client.site_id_header, "1");
         assert_eq!(client.timeout, Duration::from_secs(60));
         // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
+        assert_eq!(client.token_pair, token_pair);
+    }
+
+    #[tokio::test]
+    async fn test_client_builder_build_without_token_pair() {
+        let client = Builder::default().build();
+
+        assert!(client.is_err(), "Client cannot be set without token pair");
     }
 }

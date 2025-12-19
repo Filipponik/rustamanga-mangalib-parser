@@ -2,7 +2,7 @@
 
 use mockito::{Matcher, Server};
 use rustamanga_mangalib_parser::mangalib::{Client, Error, MangaChapter, http_client::HttpClient};
-use utils::load_fixture;
+use utils::*;
 
 mod utils;
 
@@ -30,7 +30,9 @@ async fn test_get_chapters_positive() {
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_secs(2))
-        .build();
+        .token_pair(create_token_pair())
+        .build()
+        .unwrap();
 
     // act
     let result = client.get_manga_chapters("i-alone-level-up").await;
@@ -65,7 +67,9 @@ async fn test_get_chapters_bad_response() {
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_secs(2))
-        .build();
+        .token_pair(create_token_pair())
+        .build()
+        .unwrap();
 
     // act
     let result = client.get_manga_chapters("i-alone-level-up").await;
@@ -86,7 +90,9 @@ async fn test_get_chapters_server_down() {
         .referrer_header("test_referrer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_millis(10))
-        .build();
+        .token_pair(create_token_pair())
+        .build()
+        .unwrap();
 
     // act
     let result = client.get_manga_chapters("i-alone-level-up").await;
@@ -130,7 +136,9 @@ async fn test_get_chapter_images_positive() {
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
         .timeout(std::time::Duration::from_secs(2))
-        .build();
+        .token_pair(create_token_pair())
+        .build()
+        .unwrap();
 
     // act
     let result = client
@@ -184,7 +192,9 @@ async fn test_get_chapter_images_bad_response() {
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
         .timeout(std::time::Duration::from_secs(2))
-        .build();
+        .token_pair(create_token_pair())
+        .build()
+        .unwrap();
 
     // act
     let result = client
@@ -208,7 +218,9 @@ async fn test_get_chapter_images_server_down() {
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
         .timeout(std::time::Duration::from_millis(10))
-        .build();
+        .token_pair(create_token_pair())
+        .build()
+        .unwrap();
 
     // act
     let result = client
