@@ -14,6 +14,7 @@ fn get_settings() -> Command {
             Command::new("serve")
                 .about("Start web server")
                 .arg(arg!(--port <PORT> "Web server port"))
+                .arg(arg!(--proxy <PROXY> "Proxy URI"))
                 .arg(arg!(--semaphore_permits <SEMAPHORE_PERMITS> "Max semaphore permits")),
             Command::new("send-resource")
                 .about("Send start static resource")
@@ -55,9 +56,10 @@ pub async fn process_commands() -> Result<(), Error> {
     match get_settings().get_matches().subcommand() {
         Some(("serve", sub_matches)) => {
             let port = parse_port(sub_matches)?;
+            let proxy_str = sub_matches.get_one::<String>("proxy").map(String::as_str);
             let semaphore_permits = parse_semaphore_permits(sub_matches)?;
 
-            serve(port, semaphore_permits).await
+            serve(port, semaphore_permits, proxy_str).await
         }
         Some(("send-resource", sub_matches)) => {
             let url = sub_matches
@@ -106,8 +108,8 @@ fn parse_port(sub_matches: &ArgMatches) -> Result<u16, Error> {
     )
 }
 
-async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
-    Ok(server::serve(port, semaphore_permits).await?)
+async fn serve(port: u16, semaphore_permits: usize, proxy_str: Option<&str>) -> Result<(), Error> {
+    Ok(server::serve(port, semaphore_permits, proxy_str).await?)
 }
 
 async fn send_resource(url: &str) -> Result<(), Error> {
