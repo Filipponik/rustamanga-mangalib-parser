@@ -74,7 +74,17 @@ async fn test_get_chapters_bad_response() {
     mock.assert();
     assert!(result.is_err());
     let result = result.expect_err("Expected serde parse error");
-    assert!(matches!(result, Error::SerdeParse(_)));
+
+    #[allow(unused_variables)]
+    let expected_url = format!("{}/api/manga/i-alone-level-up/chapters", server.url());
+    assert!(matches!(
+        result,
+        Error::ReqwestResponseStatus {
+            status: reqwest::StatusCode::NOT_FOUND,
+            #[allow(unused_variables)]
+            url: expected_url
+        }
+    ));
     drop(server);
 }
 
@@ -194,8 +204,21 @@ async fn test_get_chapter_images_bad_response() {
     // assert
     mock.assert();
     assert!(result.is_err());
-    let result = result.expect_err("Expected serde parse error");
-    assert!(matches!(result, Error::SerdeParse(_)));
+    let result = result.expect_err("Expected response status error");
+
+    #[allow(unused_variables)]
+    let expected_url = format!(
+        "{}/api/manga/i-alone-level-up/chapter?number=0&volume=1",
+        server.url()
+    );
+    assert!(matches!(
+        result,
+        Error::ReqwestResponseStatus {
+            status: reqwest::StatusCode::NOT_FOUND,
+            #[allow(unused_variables)]
+            url: expected_url
+        }
+    ));
     drop(server);
 }
 
