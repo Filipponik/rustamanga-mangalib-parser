@@ -20,6 +20,11 @@ build-linux-static:
 	upx --best --lzma ./rustamanga-mangalib-parser_x86_64-unknown-linux-musl
 	./rustamanga-mangalib-parser_x86_64-unknown-linux-musl -V
 
+build-macos-static:
+	cargo build --release
+	mv target/aarch64-apple-darwin/release/rustamanga-mangalib-parser ./rustamanga-mangalib-parser_aarch64-apple-darwin
+	./rustamanga-mangalib-parser_aarch64-apple-darwin -V
+
 fix:
 	cargo fmt
 	cargo fix --allow-dirty --allow-staged
