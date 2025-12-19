@@ -65,17 +65,21 @@ pub enum Error {
     Config(#[from] ConfigErrorType),
     #[error("Server error {0}")]
     ServerError(#[from] std::io::Error),
+    #[error("HTTP client build error {0}")]
+    HttpClientBuild(#[from] reqwest::Error),
 }
 
 /// # Errors
 /// - [`Error::Config`]: Error while parsing config
 /// - [`Error::ServerError`]: Server error
-pub async fn serve(port: u16, semaphore_permits: usize) -> Result<(), Error> {
+pub async fn serve(
+    port: u16,
+    semaphore_permits: usize,
+    proxy_str: Option<&str>,
+) -> Result<(), Error> {
     let config = AppConfig::new(port, semaphore_permits);
-    let state = Arc::new(AppState::new(
-        config,
-        Processor::new(HttpClient::builder().build(), None),
-    ));
+    let mangalib_client = build_client(proxy_str)?;
+    let state = Arc::new(AppState::new(config, Processor::new(mangalib_client, None)));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;
 
@@ -141,6 +145,20 @@ async fn do_sync_command<TClient: Client + 'static>(
             )
         }
     }
+}
+
+fn build_client(proxy_str: Option<&str>) -> Result<HttpClient, Error> {
+    let client_builder = match proxy_str {
+        Some(proxy) => {
+            let proxy = reqwest::Proxy::all(proxy).map_err(Error::HttpClientBuild)?;
+            reqwest::ClientBuilder::new().proxy(proxy)
+        }
+        None => reqwest::ClientBuilder::new(),
+    };
+
+    let client = client_builder.build().map_err(Error::HttpClientBuild)?;
+
+    Ok(HttpClient::builder().reqwest_client(client).build())
 }
 
 async fn handle_404(uri: OriginalUri) -> (StatusCode, Json<Value>) {
