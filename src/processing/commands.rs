@@ -25,7 +25,7 @@ macro_rules! define_commands {
 define_commands! {
     "full" => Command::GetMangaWithChaptersAndImages,
     "only_chapters" => Command::GetMangaWithOnlyChapters,
-    "get_user_list" => Command::GetMangaWithChaptersAndImages
+    "get_user_list" => Command::GetUserList
 }
 
 #[allow(clippy::enum_variant_names)]

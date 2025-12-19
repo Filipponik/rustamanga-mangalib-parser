@@ -1,5 +1,6 @@
 use std::fs;
 
+use rustamanga_mangalib_parser::mangalib::http_client::{AccessToken, RefreshToken, TokenPair};
 use serde_json::Value;
 
 /// Loads JSON fixture by name.
@@ -20,4 +21,12 @@ pub enum FixtureError {
     ReadError(#[from] std::io::Error),
     #[error("Failed to parse JSON fixture {0}")]
     ParseError(#[from] serde_json::Error),
+}
+
+#[must_use]
+pub fn create_token_pair() -> TokenPair {
+    TokenPair {
+        access_token: AccessToken::new("test_access_token"),
+        refresh_token: RefreshToken::new("test_refresh_token"),
+    }
 }

@@ -50,7 +50,9 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
             Command::GetMangaWithOnlyChapters(params) => {
                 manga::handle_only_chapters(&params, self.client.clone(), &self.sender).await?;
             }
-            Command::GetUserList(params) => user_list::handle(&params).await?,
+            Command::GetUserList(params) => {
+                user_list::handle(&params, self.client.clone(), &self.sender).await?;
+            }
         }
 
         Ok(())
