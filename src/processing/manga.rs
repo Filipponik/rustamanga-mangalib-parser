@@ -161,6 +161,10 @@ async fn get_manga_urls<T: mangalib::Client + 'static>(
                         .await
                 },
                 5,
+                |err: &mangalib::Error| {
+                    // Do NOT retry if throttling
+                    matches!(err, mangalib::Error::Throttling)
+                },
             )
             .await?;
             urls.insert(chapter, result);
@@ -229,6 +233,7 @@ async fn send_info_about_manga(
 async fn retry<T, E: std::fmt::Debug, F>(
     decorated: impl Fn() -> F,
     max_retries: u32,
+    should_not_retry: impl Fn(&E) -> bool,
 ) -> Result<T, E>
 where
     F: Future<Output = Result<T, E>>,
@@ -238,9 +243,18 @@ where
     for attempt in 1..=max_retries {
         match decorated().await {
             Ok(value) => return Ok(value),
-            Err(err) if attempt >= max_retries => return Err(err),
+            Err(err) if attempt >= max_retries => {
+                error!(attempt = attempt, err = ?err, "Last attempt failed, retries exceeded");
+                return Err(err);
+            }
             Err(err) => {
                 error!(attempt = attempt, err = ?err, "Attempt failed");
+
+                if should_not_retry(&err) {
+                    error!(attempt = attempt, err = ?err, "Result marked as should not retry");
+                    return Err(err);
+                }
+
                 sleep(backoff).await;
 
                 backoff = backoff

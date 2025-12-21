@@ -18,6 +18,8 @@ pub enum Error {
     ReqwestNetwork { source: reqwest::Error, url: String },
     #[error("Failed to read response from {url}: {source}")]
     ReqwestResponseRead { source: reqwest::Error, url: String },
+    #[error("Throttling error")]
+    Throttling,
     #[error("Bad response status for URL {url}: {status}")]
     ReqwestResponseStatus {
         status: reqwest::StatusCode,

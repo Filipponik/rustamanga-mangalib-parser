@@ -1,9 +1,9 @@
-use std::time::Duration;
-
 use crate::mangalib::{Client, Error, MangaChapter, MangaListItem};
+use axum::http::StatusCode;
 use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::{Value, json};
+use std::time::Duration;
 use tracing::debug;
 
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
@@ -286,7 +286,8 @@ impl HttpClient {
     /// - [`Error::ReqwestNetwork`] if network error occurs
     /// - [`Error::ReqwestResponseRead`] if cannot read response body
     /// - [`Error::SerdeParse`] if cannot parse response body to needed struct
-    /// - [`Error::ReqwestResponseStatus`] if response status code is not success
+    /// - [`Error::Throttling`] if throttling found
+    /// - [`Error::ReqwestResponseStatus`] if response status code is not success (except 429 HTTP)
     async fn parse_response<T: DeserializeOwned>(
         &self,
         url: &str,
@@ -296,6 +297,10 @@ impl HttpClient {
             source: e,
             url: url.to_string(),
         })?;
+
+        if response.status() == StatusCode::TOO_MANY_REQUESTS {
+            return Err(Error::Throttling);
+        }
 
         if !response.status().is_success() {
             return Err(Error::ReqwestResponseStatus {
