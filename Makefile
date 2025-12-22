@@ -22,7 +22,7 @@ build-linux-static:
 
 build-macos-static:
 	cargo build --release
-	mv target/aarch64-apple-darwin/release/rustamanga-mangalib-parser ./rustamanga-mangalib-parser_aarch64-apple-darwin
+	mv target/release/rustamanga-mangalib-parser ./rustamanga-mangalib-parser_aarch64-apple-darwin
 	./rustamanga-mangalib-parser_aarch64-apple-darwin -V
 
 fix:
