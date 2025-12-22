@@ -1,6 +1,6 @@
 use crate::mangalib::http_client::HttpClient;
 use crate::processing::Processor;
-use chrono::Utc;
+use chrono::{DateTime, Timelike, Utc};
 use futures::StreamExt;
 use lapin::message::Delivery;
 use lapin::options::{
@@ -90,73 +90,79 @@ pub async fn consume(
     info!("Waiting for jobs");
     let client = build_client(proxy_str)?;
     let processor = Processor::new(client, None);
-    let mut throttled_until: Option<u64> = None;
+    let mut throttled_until: Option<DateTime<Utc>> = None;
 
-    while let Some(delivery) = consumer.next().await {
-        let Ok(delivery) = delivery else {
-            continue;
-        };
-
+    loop {
+        // Check if we're throttled
         if let Some(throttle_time) = throttled_until {
-            let now = Utc::now().timestamp() as u64;
+            let now = Utc::now();
             if now < throttle_time {
-                let sleep_duration = Duration::from_secs(throttle_time - now);
+                #[allow(clippy::cast_sign_loss)]
+                let sleep_duration =
+                    Duration::from_secs((throttle_time - now).abs().num_seconds() as u64);
                 info!(
                     "Throttled until next hour, sleeping for {:?}",
                     sleep_duration
                 );
                 sleep(sleep_duration).await;
-                throttled_until = None;
             }
         }
+        throttled_until = None;
 
-        let payload: Result<&str, ParseDeliveryErrorType> = parse_delivery(&delivery);
+        '_processing_loop: while let Some(Ok(delivery)) = consumer.next().await {
+            let payload: Result<&str, ParseDeliveryErrorType> = parse_delivery(&delivery);
 
-        let processing_result = match payload {
-            Ok(value) => processor.process(semaphore_permits, value).await,
-            Err(err) => {
-                error!("Parse delivery error: {err:?}");
-                continue;
-            }
-        };
+            let processing_result = match payload {
+                Ok(value) => processor.process(semaphore_permits, value).await,
+                Err(err) => {
+                    error!("Parse delivery error: {err:?}");
+                    continue;
+                }
+            };
 
-        match processing_result {
-            Ok(()) => {
-                delivery
-                    .ack(BasicAckOptions::default())
-                    .await
-                    .map_err(|err| Error::Amqp(AmqpWrapperError::Ack(err)))?;
-            }
-            Err(crate::processing::Error::Manga(crate::processing::manga::Error::Mangalib(
-                crate::mangalib::Error::Throttling,
-            ))) => {
-                let now = Utc::now().timestamp() as u64;
-                let next_hour = ((now / 3600) + 1) * 3600;
-                throttled_until = Some(next_hour);
-                info!("Throttling detected, pausing until next hour");
+            match processing_result {
+                Ok(()) => {
+                    delivery
+                        .ack(BasicAckOptions::default())
+                        .await
+                        .map_err(|err| Error::Amqp(AmqpWrapperError::Ack(err)))?;
+                }
+                Err(crate::processing::Error::Manga(
+                    crate::processing::manga::Error::Mangalib(crate::mangalib::Error::Throttling),
+                )) => {
+                    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+                    let next_hour = Utc::now()
+                        .with_minute(0)
+                        .and_then(|d| d.with_second(0))
+                        .and_then(|d| d.with_nanosecond(0))
+                        .unwrap()
+                        + Duration::from_hours(1);
+                    throttled_until = Some(next_hour);
+                    info!("Throttling detected, pausing until next hour");
 
-                delivery
-                    .nack(BasicNackOptions {
-                        requeue: true,
-                        ..Default::default()
-                    })
-                    .await
-                    .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
-            }
-            Err(err) => {
-                delivery
-                    .nack(BasicNackOptions {
-                        requeue: false,
-                        ..Default::default()
-                    })
-                    .await
-                    .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
-                error!("Processing error: {err:?}");
+                    delivery
+                        .nack(BasicNackOptions {
+                            requeue: true,
+                            ..Default::default()
+                        })
+                        .await
+                        .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
+
+                    break '_processing_loop;
+                }
+                Err(err) => {
+                    delivery
+                        .nack(BasicNackOptions {
+                            requeue: false,
+                            ..Default::default()
+                        })
+                        .await
+                        .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
+                    error!("Processing error: {err:?}");
+                }
             }
         }
     }
-
-    Ok(())
 }
 
 fn parse_delivery(delivery: &Delivery) -> Result<&str, ParseDeliveryErrorType> {

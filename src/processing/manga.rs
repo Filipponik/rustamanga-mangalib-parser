@@ -52,6 +52,10 @@ pub struct PublishedMangaChapter {
     pub images_urls: Vec<String>,
 }
 
+/// Handle `full` manga request
+///
+/// # Errors
+/// Any error can be returned while processing manga
 pub async fn handle_full<T: mangalib::Client + 'static>(
     params: &GetMangaWithChaptersAndImagesParams,
     client: Arc<T>,
@@ -77,6 +81,10 @@ pub async fn handle_full<T: mangalib::Client + 'static>(
     Ok(())
 }
 
+/// Handle `only_chapters` manga request (return only chapters without images)
+///
+/// # Errors
+/// Any error can be returned while processing manga
 pub async fn handle_only_chapters<T: mangalib::Client + 'static>(
     params: &GetMangaWithOnlyChaptersParams,
     client: Arc<T>,

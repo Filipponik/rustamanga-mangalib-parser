@@ -1,4 +1,4 @@
-#![allow(unused, dead_code, clippy::unused_async)]
+#![allow(unused, dead_code, clippy::unused_async, clippy::missing_errors_doc)]
 
 #[derive(serde::Deserialize, Debug)]
 pub struct GetUserListParams {
