@@ -2088,7 +2088,7 @@ dependencies = [
 
 [[package]]
 name = "rustamanga-mangalib-parser"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
  "async-stream",
  "axum",
