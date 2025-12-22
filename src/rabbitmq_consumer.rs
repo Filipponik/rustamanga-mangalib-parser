@@ -106,7 +106,7 @@ pub async fn consume(
         }
         throttled_until = None;
 
-        '_processing_loop: while let Some(Ok(delivery)) = consumer.next().await {
+        'processing_loop: while let Some(Ok(delivery)) = consumer.next().await {
             let payload: Result<&str, ParseDeliveryErrorType> = parse_delivery(&delivery);
 
             let processing_result = match payload {
@@ -141,7 +141,7 @@ pub async fn consume(
                         .await
                         .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
 
-                    break '_processing_loop;
+                    break 'processing_loop;
                 }
                 Err(err) => {
                     delivery
