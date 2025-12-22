@@ -1,6 +1,6 @@
 use crate::mangalib::http_client::HttpClient;
 use crate::processing::Processor;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, Utc};
 use futures::StreamExt;
 use lapin::message::Delivery;
 use lapin::options::{
@@ -100,7 +100,7 @@ pub async fn consume(
                 #[allow(clippy::cast_sign_loss)]
                 let sleep_duration =
                     Duration::from_secs((throttle_time - now).abs().num_seconds() as u64);
-                info!("Throttled until +2 min, sleeping for {:?}", sleep_duration);
+                info!("Throttled until {throttle_time:?}, sleeping for {sleep_duration:?}");
                 sleep(sleep_duration).await;
             }
         }
@@ -128,9 +128,10 @@ pub async fn consume(
                     crate::processing::manga::Error::Mangalib(crate::mangalib::Error::Throttling),
                 )) => {
                     #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
-                    let next_start = Utc::now() + Duration::from_mins(1);
+                    let sleep_time = Duration::from_mins(1);
+                    let next_start = Utc::now() + sleep_time;
                     throttled_until = Some(next_start);
-                    info!("Throttling detected, pausing until +2 min");
+                    info!("Throttling detected, pausing until {sleep_time:?}");
 
                     delivery
                         .nack(BasicNackOptions {
