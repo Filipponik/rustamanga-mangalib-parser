@@ -2,8 +2,8 @@ use crate::{mangalib, processing::commands::Command};
 use std::sync::Arc;
 
 mod commands;
-mod manga;
-mod user_list;
+pub mod manga;
+pub mod user_list;
 
 #[derive(Clone)]
 pub struct Processor<TClient: mangalib::Client> {
