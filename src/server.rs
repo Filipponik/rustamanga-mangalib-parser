@@ -67,6 +67,8 @@ pub enum Error {
     Server(#[from] std::io::Error),
     #[error("HTTP client build error {0}")]
     HttpClientBuild(#[from] reqwest::Error),
+    #[error("Processor error {0}")]
+    Processor(#[from] crate::processing::Error),
 }
 
 /// # Errors
@@ -79,7 +81,10 @@ pub async fn serve(
 ) -> Result<(), Error> {
     let config = AppConfig::new(port, semaphore_permits);
     let mangalib_client = build_client(proxy_str)?;
-    let state = Arc::new(AppState::new(config, Processor::new(mangalib_client, None)));
+    let state = Arc::new(AppState::new(
+        config,
+        Processor::new(mangalib_client, None)?,
+    ));
     let address = state.config.address();
     let listener = TcpListener::bind(&address).await?;
 

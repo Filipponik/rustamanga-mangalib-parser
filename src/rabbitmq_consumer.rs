@@ -67,6 +67,8 @@ pub enum Error {
     ParseDelivery(#[from] ParseDeliveryErrorType),
     #[error("HTTP client build error {0}")]
     HttpClientBuild(#[from] reqwest::Error),
+    #[error("Processor error {0}")]
+    Processor(#[from] crate::processing::Error),
 }
 
 /// Consumes messages from `RabbitMQ` and processes them.
@@ -89,7 +91,7 @@ pub async fn consume(
 
     info!("Waiting for jobs");
     let client = build_client(proxy_str)?;
-    let processor = Processor::new(client, None);
+    let processor = Processor::new(client, None)?;
     let mut throttled_until: Option<DateTime<Utc>> = None;
 
     loop {

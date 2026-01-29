@@ -19,14 +19,31 @@ pub enum Error {
     UserList(#[from] user_list::Error),
     #[error("Parse command error: {0}")]
     ParseCommand(#[from] commands::ParseError),
+    #[error("Client build error: {0}")]
+    ClientBuild(reqwest::Error),
 }
 
 impl<TClient: mangalib::Client + 'static> Processor<TClient> {
-    pub fn new(client: TClient, sender: Option<reqwest::Client>) -> Self {
-        Self {
+    /// # Errors
+    /// - [`Error::ClientBuild`] - Error occurred while building the client.
+    pub fn new(client: TClient, sender: Option<reqwest::Client>) -> Result<Self, Error> {
+        let sender = if let Some(sender) = sender {
+            sender
+        } else {
+            let reqwest_client = reqwest::ClientBuilder::new()
+                .timeout(std::time::Duration::from_secs(120))
+                .build();
+
+            match reqwest_client {
+                Ok(client) => client,
+                Err(err) => return Err(Error::ClientBuild(err)),
+            }
+        };
+
+        Ok(Self {
             client: Arc::new(client),
-            sender: sender.unwrap_or_default(),
-        }
+            sender,
+        })
     }
 
     /// Processes an incoming scrap request using the configured client and sender.
