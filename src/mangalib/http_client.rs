@@ -277,7 +277,7 @@ impl HttpClient {
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
         self.reqwest_client
             .request(method, url)
-            .header("Referrer", &self.referrer_header)
+            .header("Referer", &self.referrer_header)
             .header("Site-Id", &self.site_id_header)
             .timeout(self.timeout)
     }
