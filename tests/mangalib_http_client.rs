@@ -13,7 +13,7 @@ async fn test_get_chapters_positive() {
     let mock = server
         .mock("GET", "/api/manga/i-alone-level-up/chapters")
         .match_query(Matcher::Any)
-        .match_header("Referrer", "test_referrer")
+        .match_header("Referer", "test_referer")
         .match_header("Site-Id", "test_site_id")
         .with_status(200)
         .with_header("Content-Type", "application/json")
@@ -27,7 +27,7 @@ async fn test_get_chapters_positive() {
 
     let client = HttpClient::builder()
         .base_url(server.url())
-        .referrer_header("test_referrer")
+        .referer_header("test_referer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_secs(2))
         .build();
@@ -52,7 +52,7 @@ async fn test_get_chapters_bad_response() {
     let mock = server
         .mock("GET", "/api/manga/i-alone-level-up/chapters")
         .match_query(Matcher::Any)
-        .match_header("Referrer", "test_referrer")
+        .match_header("Referer", "test_referer")
         .match_header("Site-Id", "test_site_id")
         .with_status(404)
         .with_header("Content-Type", "application/json")
@@ -62,7 +62,7 @@ async fn test_get_chapters_bad_response() {
 
     let client = HttpClient::builder()
         .base_url(server.url())
-        .referrer_header("test_referrer")
+        .referer_header("test_referer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_secs(2))
         .build();
@@ -93,7 +93,7 @@ async fn test_get_chapters_server_down() {
     // arrange
     let client = HttpClient::builder()
         .base_url("http://localhost:54321")
-        .referrer_header("test_referrer")
+        .referer_header("test_referer")
         .site_id_header("test_site_id")
         .timeout(std::time::Duration::from_millis(10))
         .build();
@@ -122,7 +122,7 @@ async fn test_get_chapter_images_positive() {
             "GET",
             "/api/manga/i-alone-level-up/chapter?number=0&volume=1",
         )
-        .match_header("Referrer", "test_referrer")
+        .match_header("Referer", "test_referer")
         .match_header("Site-Id", "test_site_id")
         .with_status(200)
         .with_header("Content-Type", "application/json")
@@ -136,7 +136,7 @@ async fn test_get_chapter_images_positive() {
 
     let client = HttpClient::builder()
         .base_url(server.url())
-        .referrer_header("test_referrer")
+        .referer_header("test_referer")
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
         .timeout(std::time::Duration::from_secs(2))
@@ -180,7 +180,7 @@ async fn test_get_chapter_images_bad_response() {
             "GET",
             "/api/manga/i-alone-level-up/chapter?number=0&volume=1",
         )
-        .match_header("Referrer", "test_referrer")
+        .match_header("Referer", "test_referer")
         .match_header("Site-Id", "test_site_id")
         .with_status(404)
         .with_header("Content-Type", "application/json")
@@ -190,7 +190,7 @@ async fn test_get_chapter_images_bad_response() {
 
     let client = HttpClient::builder()
         .base_url(server.url())
-        .referrer_header("test_referrer")
+        .referer_header("test_referer")
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
         .timeout(std::time::Duration::from_secs(2))
@@ -227,7 +227,7 @@ async fn test_get_chapter_images_server_down() {
     // arrange
     let client = HttpClient::builder()
         .base_url("http://localhost:54321")
-        .referrer_header("test_referrer")
+        .referer_header("test_referer")
         .site_id_header("test_site_id")
         .image_server_prefix("http://localhost:54321")
         .timeout(std::time::Duration::from_millis(10))

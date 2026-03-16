@@ -8,7 +8,7 @@ use tracing::debug;
 
 const IMAGE_SERVER_PREFIX: &str = "https://img33.imgslib.link";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
-const REFERRER_HEADER: &str = "https://mangalib.org/";
+const REFERER_HEADER: &str = "https://mangalib.org/";
 const SITE_ID_HEADER: &str = "1";
 const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -147,7 +147,7 @@ impl From<Chapter> for MangaChapter {
 pub struct Builder {
     image_server_prefix: Option<String>,
     base_url: Option<String>,
-    referrer_header: Option<String>,
+    referer_header: Option<String>,
     site_id_header: Option<String>,
     timeout: Option<Duration>,
     reqwest_client: Option<reqwest::Client>,
@@ -167,8 +167,8 @@ impl Builder {
     }
 
     #[must_use]
-    pub fn referrer_header(mut self, referrer_header: impl Into<String>) -> Self {
-        self.referrer_header = Some(referrer_header.into());
+    pub fn referer_header(mut self, referer_header: impl Into<String>) -> Self {
+        self.referer_header = Some(referer_header.into());
         self
     }
 
@@ -199,9 +199,9 @@ impl Builder {
             base_url: self
                 .base_url
                 .unwrap_or_else(|| MANGALIB_DEFAULT_BASE_URL.to_string()),
-            referrer_header: self
-                .referrer_header
-                .unwrap_or_else(|| REFERRER_HEADER.to_string()),
+            referer_header: self
+                .referer_header
+                .unwrap_or_else(|| REFERER_HEADER.to_string()),
             site_id_header: self
                 .site_id_header
                 .unwrap_or_else(|| SITE_ID_HEADER.to_string()),
@@ -215,7 +215,7 @@ impl Builder {
 pub struct HttpClient {
     image_server_prefix: String,
     base_url: String,
-    referrer_header: String,
+    referer_header: String,
     site_id_header: String,
     timeout: Duration,
     reqwest_client: reqwest::Client,
@@ -277,7 +277,7 @@ impl HttpClient {
     fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
         self.reqwest_client
             .request(method, url)
-            .header("Referer", &self.referrer_header)
+            .header("Referer", &self.referer_header)
             .header("Site-Id", &self.site_id_header)
             .timeout(self.timeout)
     }
@@ -485,7 +485,7 @@ mod tests {
         let builder = Builder::default();
         assert!(builder.image_server_prefix.is_none());
         assert!(builder.base_url.is_none());
-        assert!(builder.referrer_header.is_none());
+        assert!(builder.referer_header.is_none());
         assert!(builder.site_id_header.is_none());
         assert!(builder.timeout.is_none());
         assert!(builder.reqwest_client.is_none());
@@ -496,14 +496,14 @@ mod tests {
         let builder = Builder::default()
             .image_server_prefix("test")
             .base_url("test2")
-            .referrer_header("test3")
+            .referer_header("test3")
             .site_id_header("test4")
             .timeout(Duration::from_secs(12345))
             .reqwest_client(reqwest::Client::new());
 
         assert_eq!(builder.image_server_prefix.unwrap(), "test");
         assert_eq!(builder.base_url.unwrap(), "test2");
-        assert_eq!(builder.referrer_header.unwrap(), "test3");
+        assert_eq!(builder.referer_header.unwrap(), "test3");
         assert_eq!(builder.site_id_header.unwrap(), "test4");
         assert_eq!(builder.timeout.unwrap(), Duration::from_secs(12345));
         assert!(builder.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
@@ -514,7 +514,7 @@ mod tests {
         let client = Builder::default()
             .image_server_prefix("test")
             .base_url("test2")
-            .referrer_header("test3")
+            .referer_header("test3")
             .site_id_header("test4")
             .timeout(Duration::from_secs(12345))
             .reqwest_client(reqwest::Client::new())
@@ -522,7 +522,7 @@ mod tests {
 
         assert_eq!(client.image_server_prefix, "test");
         assert_eq!(client.base_url, "test2");
-        assert_eq!(client.referrer_header, "test3");
+        assert_eq!(client.referer_header, "test3");
         assert_eq!(client.site_id_header, "test4");
         assert_eq!(client.timeout, Duration::from_secs(12345));
         // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
@@ -534,7 +534,7 @@ mod tests {
 
         assert_eq!(client.image_server_prefix, "https://img33.imgslib.link");
         assert_eq!(client.base_url, "https://api.cdnlibs.org");
-        assert_eq!(client.referrer_header, "https://mangalib.org/");
+        assert_eq!(client.referer_header, "https://mangalib.org/");
         assert_eq!(client.site_id_header, "1");
         assert_eq!(client.timeout, Duration::from_secs(60));
         // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
