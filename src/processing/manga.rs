@@ -1,7 +1,7 @@
 use std::{ops::Add, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{AcquireError, Semaphore},

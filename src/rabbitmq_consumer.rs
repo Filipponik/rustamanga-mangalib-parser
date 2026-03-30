@@ -232,7 +232,7 @@ async fn create_channel(url: &str) -> Result<Channel, AmqpWrapperError> {
 async fn create_queue(channel: &Channel) -> Result<Queue, AmqpWrapperError> {
     channel
         .queue_declare(
-            QUEUE_NAME,
+            QUEUE_NAME.into(),
             QueueDeclareOptions::default(),
             FieldTable::default(),
         )
@@ -243,7 +243,7 @@ async fn create_queue(channel: &Channel) -> Result<Queue, AmqpWrapperError> {
 async fn create_exchange(channel: &Channel) -> Result<(), AmqpWrapperError> {
     channel
         .exchange_declare(
-            EXCHANGE_NAME,
+            EXCHANGE_NAME.into(),
             ExchangeKind::Direct,
             ExchangeDeclareOptions::default(),
             FieldTable::default(),
@@ -255,9 +255,9 @@ async fn create_exchange(channel: &Channel) -> Result<(), AmqpWrapperError> {
 async fn queue_bind(channel: &Channel) -> Result<(), AmqpWrapperError> {
     channel
         .queue_bind(
-            QUEUE_NAME,
-            EXCHANGE_NAME,
-            "",
+            QUEUE_NAME.into(),
+            EXCHANGE_NAME.into(),
+            "".into(),
             QueueBindOptions::default(),
             FieldTable::default(),
         )
@@ -268,8 +268,8 @@ async fn queue_bind(channel: &Channel) -> Result<(), AmqpWrapperError> {
 async fn create_consumer(channel: &Channel) -> Result<Consumer, AmqpWrapperError> {
     channel
         .basic_consume(
-            QUEUE_NAME,
-            "",
+            QUEUE_NAME.into(),
+            "".into(),
             BasicConsumeOptions::default(),
             FieldTable::default(),
         )

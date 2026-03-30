@@ -158,16 +158,20 @@ pub enum SearchError {
     RuntimeCreate(#[from] std::io::Error),
     #[error("Bad quota size: {0}")]
     BadQuotaSize(u32),
+    #[error("Cannot parse query params")]
+    ParseQueryParms,
 }
 
 async fn send(client: &reqwest::Client, query: &Query) -> Result<Vec<MangaPreview>, SearchError> {
     debug!(page = query.page, "Requesting page");
 
-    let response = client
-        .get("https://api.lib.social/api/manga")
-        .query(&query.to_reqwest_format().as_slice())
-        .send()
-        .await;
+    let url = reqwest::Url::parse_with_params(
+        "https://api.lib.social/api/manga",
+        query.to_reqwest_format().as_slice(),
+    )
+    .map_err(|_| SearchError::ParseQueryParms)?;
+
+    let response = client.get(url).send().await;
 
     let response = match response {
         Ok(response) => {
