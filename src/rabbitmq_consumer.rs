@@ -13,7 +13,7 @@ use lapin::{
 };
 use std::env;
 use thiserror::Error;
-use tokio::time::{Duration, sleep};
+use tokio::time::{Duration, sleep, timeout};
 use tracing::{error, info};
 
 const QUEUE_NAME: &str = "manga_urls_queue";
@@ -69,6 +69,8 @@ pub enum Error {
     HttpClientBuild(#[from] reqwest::Error),
     #[error("Processor error {0}")]
     Processor(#[from] crate::processing::Error),
+    #[error("Timeout")]
+    Timeout,
 }
 
 /// Consumes messages from `RabbitMQ` and processes them.
@@ -107,57 +109,106 @@ pub async fn consume(
             }
         }
         throttled_until = None;
+        processing_loop(
+            &mut consumer,
+            &processor,
+            &mut throttled_until,
+            semaphore_permits,
+        )
+        .await?;
+    }
+}
 
-        'processing_loop: while let Some(Ok(delivery)) = consumer.next().await {
-            let payload: Result<&str, ParseDeliveryErrorType> = parse_delivery(&delivery);
+/// Processing loop with timeout
+async fn processing_loop(
+    consumer: &mut Consumer,
+    processor: &Processor<HttpClient>,
+    throttled_until: &mut Option<DateTime<Utc>>,
+    semaphore_permits: usize,
+) -> Result<(), Error> {
+    loop {
+        let possible_delivery = timeout(Duration::from_mins(90), consumer.next()).await;
 
-            let processing_result = match payload {
-                Ok(value) => processor.process(semaphore_permits, value).await,
-                Err(err) => {
-                    error!("Parse delivery error: {err:?}");
-                    continue;
-                }
-            };
-
-            match processing_result {
-                Ok(()) => {
-                    delivery
-                        .ack(BasicAckOptions::default())
-                        .await
-                        .map_err(|err| Error::Amqp(AmqpWrapperError::Ack(err)))?;
-                }
-                Err(crate::processing::Error::Manga(
-                    crate::processing::manga::Error::Mangalib(crate::mangalib::Error::Throttling),
-                )) => {
-                    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
-                    let sleep_time = Duration::from_mins(1);
-                    let next_start = Utc::now() + sleep_time;
-                    throttled_until = Some(next_start);
-                    info!("Throttling detected, pausing until {sleep_time:?}");
-
-                    delivery
-                        .nack(BasicNackOptions {
-                            requeue: true,
-                            ..Default::default()
-                        })
-                        .await
-                        .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
-
-                    break 'processing_loop;
-                }
-                Err(err) => {
-                    delivery
-                        .nack(BasicNackOptions {
-                            requeue: false,
-                            ..Default::default()
-                        })
-                        .await
-                        .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
-                    error!("Processing error: {err:?}");
-                }
+        match possible_delivery {
+            Ok(Some(Ok(delivery))) => {
+                process_delivery(delivery, processor, throttled_until, semaphore_permits).await?;
             }
+            Err(elapsed) => {
+                error!("Timeout waiting for delivery: {elapsed:?}");
+
+                return Err(Error::Timeout);
+            }
+            _ => break,
         }
     }
+
+    Ok(())
+}
+
+async fn process_delivery(
+    delivery: Delivery,
+    processor: &Processor<HttpClient>,
+    throttled_until: &mut Option<DateTime<Utc>>,
+    semaphore_permits: usize,
+) -> Result<(), Error> {
+    let processing_result = match parse_delivery(&delivery) {
+        Ok(value) => processor.process(semaphore_permits, value).await,
+        // nack without retry for parse errors
+        Err(err) => {
+            delivery
+                .nack(BasicNackOptions {
+                    requeue: false,
+                    ..Default::default()
+                })
+                .await
+                .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
+
+            error!("Parse delivery error: {err:?}");
+
+            return Ok(());
+        }
+    };
+
+    match processing_result {
+        // ack is ok
+        Ok(()) => {
+            delivery
+                .ack(BasicAckOptions::default())
+                .await
+                .map_err(|err| Error::Amqp(AmqpWrapperError::Ack(err)))?;
+        }
+        // nack with retry if throttling
+        Err(crate::processing::Error::Manga(crate::processing::manga::Error::Mangalib(
+            crate::mangalib::Error::Throttling,
+        ))) => {
+            #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+            let sleep_time = Duration::from_mins(1);
+            let next_start = Utc::now() + sleep_time;
+            *throttled_until = Some(next_start);
+            info!("Throttling detected, pausing until {sleep_time:?}");
+
+            delivery
+                .nack(BasicNackOptions {
+                    requeue: true,
+                    ..Default::default()
+                })
+                .await
+                .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
+        }
+        // nack without retry for other errors
+        Err(err) => {
+            delivery
+                .nack(BasicNackOptions {
+                    requeue: false,
+                    ..Default::default()
+                })
+                .await
+                .map_err(|err| Error::Amqp(AmqpWrapperError::Nack(err)))?;
+            error!("Processing error: {err:?}");
+        }
+    }
+
+    Ok(())
 }
 
 fn parse_delivery(delivery: &Delivery) -> Result<&str, ParseDeliveryErrorType> {
