@@ -58,3 +58,6 @@ panic = "warn"
 missing_panics_doc = "warn"
 panic_in_result_fn = "warn"
 cargo_common_metadata = "warn"
+
+[package.metadata.cargo-machete]
+ignored = ["aws-lc-rs", "rustls-webpki"]
