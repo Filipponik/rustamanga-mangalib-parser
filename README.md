@@ -27,9 +27,9 @@
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
 - [Usage](#-usage)
-  - [Send Resource](#send-resource)
-  - [Web Server Mode](#web-server-mode)
   - [RabbitMQ Consumer](#rabbitmq-consumer)
+  - [Web Server Mode](#web-server-mode)
+  - [Send Resource](#send-resource)
 - [Development](#-development)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -63,22 +63,23 @@ Download the latest release from the [GitHub releases page](https://github.com/F
 
 ## 🚀 Usage
 
-### Send Resource
+### RabbitMQ Consumer
 
-Send a manga resource to a specified callback URL.
+Start a RabbitMQ consumer to process manga scraping tasks from a message queue.
 
 ```bash
-Usage: ./rustamanga-mangalib-parser send-resource [OPTIONS]
+Usage: ./rustamanga-mangalib-parser consume [OPTIONS]
 
 Options:
-      --url <URL>  URL where we should send this resource
-  -h, --help       Print help
+      --url <URL>            AMQP URI
+      --proxy <PROXY>        Proxy URI
+  -h, --help                 Print help
 ```
 
 **Example:**
 
 ```bash
-./rustamanga-mangalib-parser send-resource --url=https://example.com
+./rustamanga-mangalib-parser consume --url=amqp://guest:guest@localhost:5672
 ```
 
 ---
@@ -150,23 +151,22 @@ Command: get_user_list
 
 ---
 
-### RabbitMQ Consumer
+### Send Resource
 
-Start a RabbitMQ consumer to process manga scraping tasks from a message queue.
+Send a manga resource to a specified callback URL.
 
 ```bash
-Usage: ./rustamanga-mangalib-parser consume [OPTIONS]
+Usage: ./rustamanga-mangalib-parser send-resource [OPTIONS]
 
 Options:
-      --url <URL>            AMQP URI
-      --proxy <PROXY>        Proxy URI
-  -h, --help                 Print help
+      --url <URL>  URL where we should send this resource
+  -h, --help       Print help
 ```
 
 **Example:**
 
 ```bash
-./rustamanga-mangalib-parser consume --url=amqp://guest:guest@localhost:5672
+./rustamanga-mangalib-parser send-resource --url=https://example.com
 ```
 
 ---
