@@ -1,7 +1,8 @@
 version: '3'
 
 vars:
-  version: '0.11.4'
+  version:
+    sh: grep '^version' Cargo.toml | head -n1 | awk -F '"' '{print $2}'
   image: 'filipponik/rustamanga-mangalib-parser'
   platforms: 'linux/amd64,linux/arm64'
 
