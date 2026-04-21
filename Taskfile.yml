@@ -1,0 +1,55 @@
+version: '3'
+
+vars:
+  version: '0.11.4'
+  image: 'filipponik/rustamanga-mangalib-parser'
+  platforms: 'linux/amd64,linux/arm64'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build:
+    desc: Build docker images
+    cmds:
+      - docker build . -t {{.image}}:{{.version}} -t {{.image}}:latest
+
+  build_multiplatform:
+    desc: Build and push multiplatform docker images
+    cmds:
+      - docker buildx build --platform={{.platforms}} -t {{.image}}:{{.version}} -t {{.image}}:latest --push .
+
+  build_static:
+    desc: Build static binary using docker with muslrust
+    cmds:
+      - docker run -v ./:/volume --rm -t clux/muslrust:stable cargo build --release
+      - upx --best --lzma target/*-linux-musl/release/rustamanga-mangalib-parser
+
+  build_linux_static:
+    desc: Build static binary for Linux using cargo
+    cmds:
+      - cargo build --release --target x86_64-unknown-linux-musl
+      - mv target/x86_64-unknown-linux-musl/release/rustamanga-mangalib-parser ./rustamanga-mangalib-parser_x86_64-unknown-linux-musl
+      - upx --best --lzma ./rustamanga-mangalib-parser_x86_64-unknown-linux-musl
+      - ./rustamanga-mangalib-parser_x86_64-unknown-linux-musl -V
+
+  build_macos_static:
+    desc: Build binary for macOS
+    cmds:
+      - cargo build --release
+      - mv target/release/rustamanga-mangalib-parser ./rustamanga-mangalib-parser_aarch64-apple-darwin
+      - ./rustamanga-mangalib-parser_aarch64-apple-darwin -V
+
+  fix:
+    desc: Format and fix code issues
+    cmds:
+      - cargo fmt
+      - cargo fix --allow-dirty --allow-staged
+      - cargo clippy --all-targets --all-features
+
+  test:
+    desc: Run tests
+    cmds:
+      - cargo test
