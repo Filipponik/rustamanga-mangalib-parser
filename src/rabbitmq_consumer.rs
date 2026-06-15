@@ -230,12 +230,13 @@ async fn create_channel(url: &str) -> Result<Channel, AmqpWrapperError> {
 }
 
 async fn create_queue(channel: &Channel) -> Result<Queue, AmqpWrapperError> {
+    let options = QueueDeclareOptions {
+        durable: true,
+        ..Default::default()
+    };
+
     channel
-        .queue_declare(
-            QUEUE_NAME.into(),
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
+        .queue_declare(QUEUE_NAME.into(), options, FieldTable::default())
         .await
         .map_err(AmqpWrapperError::QueueCreate)
 }
