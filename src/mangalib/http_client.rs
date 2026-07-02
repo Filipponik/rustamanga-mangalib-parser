@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use std::time::Duration;
 use tracing::debug;
 
-const IMAGE_SERVER_PREFIX: &str = "https://img3.mixlib.me";
+const IMAGE_SERVER_PREFIX: &str = "https://img3.cdnlibs.org";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
 const REFERER_HEADER: &str = "https://mangalib.org/";
 const SITE_ID_HEADER: &str = "1";
