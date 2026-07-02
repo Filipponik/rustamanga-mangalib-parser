@@ -2314,7 +2314,7 @@ dependencies = [
 
 [[package]]
 name = "rustamanga-mangalib-parser"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "async-stream",
  "aws-lc-rs",
