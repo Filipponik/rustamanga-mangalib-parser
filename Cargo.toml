@@ -39,6 +39,7 @@ governor = "0.10.4"
 dashmap = "6.1.0"
 rand = "0.10.0"
 chrono = "0.4.44"
+utoipa = { version = "5.5.0", features = ["axum_extras"] }
 
 # Fix RUSTSEC-2026-0044 and RUSTSEC-2026-0048
 aws-lc-rs = "1.16.2"

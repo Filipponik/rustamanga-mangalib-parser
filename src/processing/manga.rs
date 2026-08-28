@@ -25,17 +25,25 @@ pub enum Error {
     Handle,
 }
 
-#[derive(Deserialize, Debug)]
+/// Manga slug to scrape, e.g. `solo-leveling`.
+#[derive(Deserialize, Debug, utoipa::ToSchema)]
 pub struct GetMangaWithOnlyChaptersParams {
+    /// Manga slug to scrape.
     pub slug: String,
+    /// URL where the scraped result will be published.
     pub callback_url: String,
 }
 
-#[derive(Deserialize, Debug)]
+/// Params for the `full` command: chapters with images.
+#[derive(Deserialize, Debug, utoipa::ToSchema)]
 pub struct GetMangaWithChaptersAndImagesParams {
+    /// Manga slug to scrape.
     pub slug: String,
+    /// URL where the scraped result will be published.
     pub callback_url: String,
+    /// Only scrape chapters after this chapter number.
     pub after_chapter: Option<String>,
+    /// Only scrape chapters after this volume number.
     pub after_volume: Option<String>,
 }
 

@@ -2,6 +2,7 @@ pub mod collect_resource;
 pub mod command;
 pub mod config;
 pub mod mangalib;
+pub mod openapi;
 pub mod processing;
 pub mod rabbitmq_consumer;
 pub mod send_resource;

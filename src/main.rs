@@ -5,6 +5,7 @@ mod collect_resource;
 mod command;
 mod config;
 mod mangalib;
+mod openapi;
 mod processing;
 mod rabbitmq_consumer;
 mod send_resource;

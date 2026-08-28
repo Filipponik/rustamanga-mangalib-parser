@@ -1,8 +1,11 @@
 #![allow(unused, dead_code, clippy::unused_async, clippy::missing_errors_doc)]
 
-#[derive(serde::Deserialize, Debug)]
+/// Params for the `get_user_list` command.
+#[derive(serde::Deserialize, Debug, utoipa::ToSchema)]
 pub struct GetUserListParams {
+    /// URL where the result will be published.
     pub callback_url: String,
+    /// Mangalib user id.
     pub user_id: u32,
 }
 

@@ -1,8 +1,12 @@
 use crate::mangalib::Client;
 use crate::mangalib::http_client::HttpClient;
+use crate::openapi::{
+    CommandAcceptedResponse, CommandRequest, ErrorResponse, HealthResponse, VersionResponse,
+};
 use crate::processing::{self, Processor, commands};
 use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
+use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{Value, json};
@@ -11,6 +15,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tracing::{error, info};
+use utoipa::OpenApi;
 
 #[derive(Clone)]
 struct AppState<TClient: Client> {
@@ -97,6 +102,9 @@ pub async fn serve(
         .route("/health/", get(health))
         .route("/version", get(version))
         .route("/version/", get(version))
+        .route("/docs", get(docs))
+        .route("/docs/", get(docs))
+        .route("/api-docs/openapi.json", get(openapi_json))
         .with_state(state)
         .fallback(handle_404);
 
@@ -106,6 +114,25 @@ pub async fn serve(
     Ok(())
 }
 
+/// Process command asynchronously
+///
+/// Accepts a scraping command payload, validates it and schedules processing
+/// in a background task. Responds immediately with `200 OK` when the payload
+/// is valid, or with `400`/`404` when validation fails.
+#[utoipa::path(
+    post,
+    path = "/async-command",
+    tag = "Command",
+    request_body(
+        content = CommandRequest,
+        description = "Command payload to process"
+    ),
+    responses(
+        (status = 200, description = "Command accepted for processing", body = CommandAcceptedResponse),
+        (status = 400, description = "Invalid payload", body = ErrorResponse),
+        (status = 404, description = "Unknown command", body = ErrorResponse)
+    )
+)]
 async fn do_async_command<TClient: Client + 'static>(
     State(state): State<Arc<AppState<TClient>>>,
     payload: String,
@@ -133,6 +160,27 @@ async fn do_async_command<TClient: Client + 'static>(
     )
 }
 
+/// Process command synchronously
+///
+/// Accepts a scraping command payload and processes it synchronously: the
+/// response is returned only after the command is fully processed. Returns
+/// `200 OK` on success, `400`/`404` for validation errors and `500` when
+/// processing fails.
+#[utoipa::path(
+    post,
+    path = "/sync-command",
+    tag = "Command",
+    request_body(
+        content = CommandRequest,
+        description = "Command payload to process"
+    ),
+    responses(
+        (status = 200, description = "Command processed successfully", body = CommandAcceptedResponse),
+        (status = 400, description = "Invalid payload", body = ErrorResponse),
+        (status = 404, description = "Unknown command", body = ErrorResponse),
+        (status = 500, description = "Command processing failed", body = ErrorResponse)
+    )
+)]
 async fn do_sync_command<TClient: Client + 'static>(
     State(state): State<Arc<AppState<TClient>>>,
     payload: String,
@@ -192,6 +240,18 @@ async fn handle_404(uri: OriginalUri) -> (StatusCode, Json<Value>) {
     )
 }
 
+/// Health check
+///
+/// Reports server liveness. Handy for Docker healthchecks and Kubernetes
+/// liveness probes.
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "AppState",
+    responses(
+        (status = 200, description = "Server is healthy", body = HealthResponse)
+    )
+)]
 async fn health() -> (StatusCode, Json<Value>) {
     (
         StatusCode::OK,
@@ -201,6 +261,17 @@ async fn health() -> (StatusCode, Json<Value>) {
     )
 }
 
+/// Get server version
+///
+/// Returns the current server version from `Cargo.toml`.
+#[utoipa::path(
+    get,
+    path = "/version",
+    tag = "AppState",
+    responses(
+        (status = 200, description = "Server version", body = VersionResponse)
+    )
+)]
 async fn version() -> (StatusCode, Json<Value>) {
     (
         StatusCode::OK,
@@ -209,6 +280,61 @@ async fn version() -> (StatusCode, Json<Value>) {
         })),
     )
 }
+
+/// `OpenAPI` documentation of the HTTP API served by the `serve` command.
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Rustamanga Mangalib parser",
+        version = env!("CARGO_PKG_VERSION"),
+        description = "Mangalib scraping service: accepts scraping commands over HTTP and \
+                       publishes results to the provided callback URL",
+        license(name = "MIT")
+    ),
+    paths(
+        health,
+        version,
+        do_async_command,
+        do_sync_command,
+    ),
+    tags(
+        (name = "Command", description = "Scraping commands: submit manga and user list jobs"),
+        (name = "AppState", description = "Server liveness and version info"),
+    ),
+    components(schemas(
+        CommandRequest,
+        CommandAcceptedResponse,
+        ErrorResponse,
+        HealthResponse,
+        VersionResponse,
+    ))
+)]
+struct ApiDoc;
+
+/// Serves the interactive API documentation page powered by Scalar.
+async fn docs() -> Html<&'static str> {
+    Html(DOCS_HTML)
+}
+
+/// Serves the raw `OpenAPI` specification consumed by the docs page.
+async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
+    Json(ApiDoc::openapi())
+}
+
+const DOCS_HTML: &str = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rustamanga Mangalib parser — API Reference</title>
+    <style>body { margin: 0; padding: 0; }</style>
+</head>
+<body>
+    <script id="api-reference" data-url="/api-docs/openapi.json"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>
+"#;
 
 fn parse_error_response(err: &commands::ParseError) -> (StatusCode, Json<Value>) {
     match err {
