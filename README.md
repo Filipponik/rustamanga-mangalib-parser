@@ -15,6 +15,7 @@
 
 - 🚀 **Fast & Efficient** - Built with Rust for maximum performance
 - 🌐 **Web Server Mode** - Built-in HTTP server with REST API
+- 📖 **Interactive API Docs** - Scalar-powered API reference and OpenAPI 3.1 spec
 - 🐰 **RabbitMQ Integration** - Consume tasks from message queues
 - 🎯 **Multiple Deployment Options** - CLI, server, or consumer mode
 - 🔄 **Concurrent Processing** - Handle multiple manga scraping tasks simultaneously
@@ -103,11 +104,18 @@ Options:
 ```
 
 The server will be available at `http://localhost:{PORT}`
+Interactive API documentation: `http://localhost:{PORT}/docs`
 
 #### API Endpoints
 
-1. **POST** `/async-command` - execute command asynchronously
-2. **POST** `/sync-command` - Same, but action will be executed synchronously.
+| Method | Path                      | Description                        |
+|--------|---------------------------|------------------------------------|
+| POST   | `/async-command`          | Execute command asynchronously     |
+| POST   | `/sync-command`           | Execute command synchronously      |
+| GET    | `/health`                 | Server liveness check              |
+| GET    | `/version`                | Current server version             |
+| GET    | `/docs`                   | Interactive API reference (Scalar) |
+| GET    | `/api-docs/openapi.json`  | Raw OpenAPI 3.1 specification      |
 
 **Request Body:**
 
@@ -148,6 +156,29 @@ Command: get_user_list
   }
 }
 ```
+
+#### Error Responses
+
+Command payloads are validated before processing. Invalid payloads return `400 BAD_REQUEST`, unknown commands - `404 NOT_FOUND`, processing failures - `500 INTERNAL_SERVER_ERROR`. All errors share the same JSON shape:
+
+```json
+{
+  "success": false,
+  "code": "COMMAND_NOT_FOUND",
+  "message": "Unknown command: wat"
+}
+```
+
+| Code                     | Status | Description                       |
+|--------------------------|--------|-----------------------------------|
+| `INVALID_JSON`           | 400    | Request body is not valid JSON    |
+| `PAYLOAD_MUST_BE_OBJECT` | 400    | Payload must be a JSON object     |
+| `COMMAND_MUST_BE_STRING` | 400    | `command` field must be a string  |
+| `PARAMS_MUST_BE_SET`     | 400    | `params` field is required        |
+| `INVALID_PARAMS`         | 400    | `params` failed schema validation |
+| `COMMAND_NOT_FOUND`      | 404    | Unknown command name              |
+| `PROCESSING_ERROR`       | 500    | Command processing failed         |
+| `NOT_FOUND`              | 404    | Unknown route                     |
 
 ---
 
