@@ -246,7 +246,7 @@ async fn retry<T, E: std::fmt::Debug, F>(
 where
     F: Future<Output = Result<T, E>>,
 {
-    let mut backoff = Duration::from_millis(1000);
+    let mut backoff = Duration::from_secs(1);
 
     for attempt in 1..=max_retries {
         match decorated().await {
@@ -268,7 +268,7 @@ where
                 backoff = backoff
                     .mul_f32(3.0)
                     .add(Duration::from_millis(rand::rng().random_range(0..1000)))
-                    .min(Duration::from_secs(60));
+                    .min(Duration::from_mins(1));
             }
         }
     }

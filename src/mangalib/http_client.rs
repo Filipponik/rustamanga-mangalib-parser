@@ -10,7 +10,7 @@ const IMAGE_SERVER_PREFIX: &str = "https://img3.cdnlibs.org";
 const MANGALIB_DEFAULT_BASE_URL: &str = "https://api.cdnlibs.org";
 const REFERER_HEADER: &str = "https://mangalib.org/";
 const SITE_ID_HEADER: &str = "1";
-const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_mins(1);
 
 #[derive(Deserialize, Debug)]
 pub struct ApiResponse<T> {
@@ -532,11 +532,11 @@ mod tests {
     async fn test_client_builder_build_all_default() {
         let client = Builder::default().build();
 
-        assert_eq!(client.image_server_prefix, "https://img33.imgslib.link");
+        assert_eq!(client.image_server_prefix, "https://img3.cdnlibs.org");
         assert_eq!(client.base_url, "https://api.cdnlibs.org");
         assert_eq!(client.referer_header, "https://mangalib.org/");
         assert_eq!(client.site_id_header, "1");
-        assert_eq!(client.timeout, Duration::from_secs(60));
+        assert_eq!(client.timeout, Duration::from_mins(1));
         // assert!(client.reqwest_client.is_some()); // i don't know how to check if reqwest_client is same
     }
 }

@@ -31,7 +31,7 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
             sender
         } else {
             let reqwest_client = reqwest::ClientBuilder::new()
-                .timeout(std::time::Duration::from_secs(120))
+                .timeout(std::time::Duration::from_mins(2))
                 .build();
 
             match reqwest_client {
