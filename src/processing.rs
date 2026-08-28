@@ -1,7 +1,7 @@
 use crate::{mangalib, processing::commands::Command};
 use std::sync::Arc;
 
-mod commands;
+pub mod commands;
 pub mod manga;
 pub mod user_list;
 
@@ -46,14 +46,16 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
         })
     }
 
-    /// Processes an incoming scrap request using the configured client and sender.
+    /// Executes an already parsed command.
     ///
     /// # Errors
     /// [`Error::Manga`] - Error occurred while processing manga data.
     /// [`Error::UserList`] - Error occurred while processing user list data.
-    /// [`Error::ParseCommand`] - Error occurred while parsing command.
-    pub async fn process(&self, semaphore_permits: usize, payload: &str) -> Result<(), Error> {
-        let command = commands::parse_command(payload)?;
+    pub async fn process_command(
+        &self,
+        command: Command,
+        semaphore_permits: usize,
+    ) -> Result<(), Error> {
         match command {
             Command::GetMangaWithChaptersAndImages(params) => {
                 manga::handle_full(
@@ -71,5 +73,16 @@ impl<TClient: mangalib::Client + 'static> Processor<TClient> {
         }
 
         Ok(())
+    }
+
+    /// Processes an incoming scrap request using the configured client and sender.
+    ///
+    /// # Errors
+    /// [`Error::Manga`] - Error occurred while processing manga data.
+    /// [`Error::UserList`] - Error occurred while processing user list data.
+    /// [`Error::ParseCommand`] - Error occurred while parsing command.
+    pub async fn process(&self, semaphore_permits: usize, payload: &str) -> Result<(), Error> {
+        let command = commands::parse_command(payload)?;
+        self.process_command(command, semaphore_permits).await
     }
 }

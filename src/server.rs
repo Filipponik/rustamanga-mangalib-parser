@@ -1,9 +1,9 @@
 use crate::mangalib::Client;
 use crate::mangalib::http_client::HttpClient;
-use crate::processing::{self, Processor};
+use crate::processing::{self, Processor, commands};
 use axum::extract::{OriginalUri, State};
 use axum::http::StatusCode;
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{Value, json};
 use std::env;
@@ -93,6 +93,10 @@ pub async fn serve(
         .route("/async-command/", post(do_async_command))
         .route("/sync-command", post(do_sync_command))
         .route("/sync-command/", post(do_sync_command))
+        .route("/health", get(health))
+        .route("/health/", get(health))
+        .route("/version", get(version))
+        .route("/version/", get(version))
         .with_state(state)
         .fallback(handle_404);
 
@@ -106,11 +110,16 @@ async fn do_async_command<TClient: Client + 'static>(
     State(state): State<Arc<AppState<TClient>>>,
     payload: String,
 ) -> (StatusCode, Json<Value>) {
+    let command = match commands::parse_command(&payload) {
+        Ok(command) => command,
+        Err(err) => return parse_error_response(&err),
+    };
+
     let processor = state.processor.clone();
     let semaphore_permits = state.config.semaphore_permits;
 
     tokio::spawn(async move {
-        if let Err(err) = processor.process(semaphore_permits, &payload).await {
+        if let Err(err) = processor.process_command(command, semaphore_permits).await {
             error!("Error while processing manga: {err:?}");
         }
     });
@@ -128,10 +137,15 @@ async fn do_sync_command<TClient: Client + 'static>(
     State(state): State<Arc<AppState<TClient>>>,
     payload: String,
 ) -> (StatusCode, Json<Value>) {
+    let command = match commands::parse_command(&payload) {
+        Ok(command) => command,
+        Err(err) => return parse_error_response(&err),
+    };
+
     let processor = state.processor.clone();
     let semaphore_permits = state.config.semaphore_permits;
 
-    match processor.process(semaphore_permits, &payload).await {
+    match processor.process_command(command, semaphore_permits).await {
         Ok(()) => (
             StatusCode::OK,
             Json(json!({
@@ -145,7 +159,8 @@ async fn do_sync_command<TClient: Client + 'static>(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({
                     "success": false,
-                    "message": format!("Failed to process manga: {err:?}")
+                    "code": "PROCESSING_ERROR",
+                    "message": format!("Failed to process command: {err:?}")
                 })),
             )
         }
@@ -171,7 +186,79 @@ async fn handle_404(uri: OriginalUri) -> (StatusCode, Json<Value>) {
         StatusCode::NOT_FOUND,
         Json(json!({
             "success": false,
+            "code": "NOT_FOUND",
             "message": format!("Route {} not found", uri.0)
         })),
     )
+}
+
+async fn health() -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::OK,
+        Json(json!({
+            "status": "ok"
+        })),
+    )
+}
+
+async fn version() -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::OK,
+        Json(json!({
+            "version": env!("CARGO_PKG_VERSION")
+        })),
+    )
+}
+
+fn parse_error_response(err: &commands::ParseError) -> (StatusCode, Json<Value>) {
+    match err {
+        commands::ParseError::FirstParse(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false,
+                "code": "INVALID_JSON",
+                "message": format!("Failed to parse request body as JSON: {e}")
+            })),
+        ),
+        commands::ParseError::PayloadMustBeObject => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false,
+                "code": "PAYLOAD_MUST_BE_OBJECT",
+                "message": "Request payload must be a JSON object"
+            })),
+        ),
+        commands::ParseError::CommandMustBeString => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false,
+                "code": "COMMAND_MUST_BE_STRING",
+                "message": "Field 'command' must be a string"
+            })),
+        ),
+        commands::ParseError::ParamsMustBeSet => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false,
+                "code": "PARAMS_MUST_BE_SET",
+                "message": "Field 'params' is required"
+            })),
+        ),
+        commands::ParseError::InvalidParams(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false,
+                "code": "INVALID_PARAMS",
+                "message": format!("Invalid params: {e}")
+            })),
+        ),
+        commands::ParseError::InvalidCommand(name) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({
+                "success": false,
+                "code": "COMMAND_NOT_FOUND",
+                "message": format!("Unknown command: {name}")
+            })),
+        ),
+    }
 }
